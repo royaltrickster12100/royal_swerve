@@ -1,0 +1,4802 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.wpilib/
+  wpilib_preferences.json
+gradle/
+  wrapper/
+    gradle-wrapper.jar
+    gradle-wrapper.properties
+src/
+  main/
+    deploy/
+      example.txt
+    java/
+      frc/
+        robot/
+          generated/
+            TunerConstants.java
+          subsystems/
+            ArmSubsystem.java
+            CommandSwerveDrivetrain.java
+            ElevatorSubsystem.java
+            IntakeSubsystem.java
+            ShooterSubsystem.java
+          Constants.java
+          LimelightHelpers.java
+          Main.java
+          Robot.java
+          RobotContainer.java
+          Telemetry.java
+vendordeps/
+  Phoenix6-26.3.0.json
+  WPILibNewCommands.json
+.gitignore
+build.gradle
+gradlew
+gradlew.bat
+settings.gradle
+tuner-project.json
+WPILib-License.md
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/main/java/frc/robot/subsystems/ArmSubsystem.java">
+package frc.robot.subsystems;
+
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.PositionVoltage;
+import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.GravityTypeValue;
+import com.ctre.phoenix6.signals.NeutralModeValue;
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.ArmConstants;
+
+public class ArmSubsystem extends SubsystemBase {
+    private final TalonFX armMotor;
+    private final PositionVoltage positionRequest = new PositionVoltage(0);
+
+    private double targetRotations = 0.0;
+
+    public ArmSubsystem() {
+        armMotor = new TalonFX(ArmConstants.kArmMotorCanId);
+
+        TalonFXConfiguration config = new TalonFXConfiguration();
+        config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        config.Feedback.SensorToMechanismRatio = ArmConstants.kArmGearRatio;
+
+        config.Slot0.kP = ArmConstants.kP;
+        config.Slot0.kI = ArmConstants.kI;
+        config.Slot0.kD = ArmConstants.kD;
+        config.Slot0.kG = ArmConstants.kG;
+        config.Slot0.GravityType = GravityTypeValue.Arm_Cosine;
+
+        armMotor.getConfigurator().apply(config);
+    }
+
+    @Override
+    public void periodic() {
+        armMotor.setControl(positionRequest.withPosition(targetRotations));
+    }
+
+    public Command setAngleCommand(double targetRadians) {
+        return this.runOnce(() -> {
+            double rotations = targetRadians / (2 * Math.PI);
+            this.targetRotations = MathUtil.clamp(rotations, ArmConstants.kMinPositionRotations, ArmConstants.kMaxPositionRotations);
+        });
+    }
+}
+</file>
+
+<file path="src/main/java/frc/robot/subsystems/ElevatorSubsystem.java">
+package frc.robot.subsystems;
+
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.PositionVoltage;
+import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.GravityTypeValue;
+import com.ctre.phoenix6.signals.NeutralModeValue;
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.ElevatorConstants;
+
+public class ElevatorSubsystem extends SubsystemBase {
+    private final TalonFX elevatorMotor;
+    private final PositionVoltage positionRequest = new PositionVoltage(0);
+
+    private double targetRotations = 0.0;
+
+    public ElevatorSubsystem() {
+        elevatorMotor = new TalonFX(ElevatorConstants.kElevatorMotorCanId);
+
+        TalonFXConfiguration config = new TalonFXConfiguration();
+        config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        config.Feedback.SensorToMechanismRatio = ElevatorConstants.kElevatorGearRatio;
+
+        config.Slot0.kP = ElevatorConstants.kP;
+        config.Slot0.kI = ElevatorConstants.kI;
+        config.Slot0.kD = ElevatorConstants.kD;
+        config.Slot0.kG = ElevatorConstants.kG;
+        config.Slot0.GravityType = GravityTypeValue.Elevator_Static;
+
+        elevatorMotor.getConfigurator().apply(config);
+    }
+
+    @Override
+    public void periodic() {
+        elevatorMotor.setControl(positionRequest.withPosition(targetRotations));
+    }
+
+    public Command setHeightCommand(double heightMeters) {
+        return this.runOnce(() -> {
+            double perimeter = 2 * Math.PI * ElevatorConstants.kDrumRadiusMeters;
+            double rotations = heightMeters / perimeter;
+            this.targetRotations = MathUtil.clamp(rotations, ElevatorConstants.kMinHeightRotations, ElevatorConstants.kMaxHeightRotations);
+        });
+    }
+}
+</file>
+
+<file path="src/main/java/frc/robot/subsystems/IntakeSubsystem.java">
+package frc.robot.subsystems;
+
+import com.ctre.phoenix6.controls.VoltageOut;
+import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.NeutralModeValue;
+import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.IntakeConstants;
+
+public class IntakeSubsystem extends SubsystemBase {
+    private final TalonFX intakeMotor;
+    private final DigitalInput beamBreak;
+    private final VoltageOut voltageRequest = new VoltageOut(0);
+
+    public IntakeSubsystem() {
+        intakeMotor = new TalonFX(IntakeConstants.kIntakeMotorCanId);
+        beamBreak = new DigitalInput(IntakeConstants.kBeamBreakDioChannel);
+
+        intakeMotor.setNeutralMode(NeutralModeValue.Brake);
+    }
+
+    public boolean hasGamePiece() {
+        return !beamBreak.get();
+    }
+
+    public Command runIntakeCommand() {
+        return this.run(() -> intakeMotor.setControl(voltageRequest.withOutput(IntakeConstants.kIntakeVoltage)))
+                   .until(this::hasGamePiece)
+                   .finallyDo(() -> intakeMotor.setControl(voltageRequest.withOutput(0)));
+    }
+
+    public Command runEjectCommand() {
+        return this.startEnd(
+            () -> intakeMotor.setControl(voltageRequest.withOutput(IntakeConstants.kEjectVoltage)),
+            () -> intakeMotor.setControl(voltageRequest.withOutput(0))
+        );
+    }
+}
+</file>
+
+<file path="src/main/java/frc/robot/subsystems/ShooterSubsystem.java">
+package frc.robot.subsystems;
+
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.Follower;
+import com.ctre.phoenix6.controls.VelocityVoltage;
+import com.ctre.phoenix6.controls.VoltageOut;
+import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.MotorAlignmentValue;
+import com.ctre.phoenix6.signals.NeutralModeValue;
+import edu.wpi.first.wpilibj.RobotBase;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.ShooterConstants;
+
+public class ShooterSubsystem extends SubsystemBase {
+    private final TalonFX masterMotor;
+    private final TalonFX followerMotor;
+
+    private final VelocityVoltage velocityRequest = new VelocityVoltage(0);
+    private final VoltageOut stopRequest = new VoltageOut(0);
+
+    private double targetRPS = 0.0;
+
+    public ShooterSubsystem() {
+        masterMotor = new TalonFX(ShooterConstants.kMasterCanId);
+        followerMotor = new TalonFX(ShooterConstants.kFollowerCanId);
+
+        TalonFXConfiguration config = new TalonFXConfiguration();
+        config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+
+        config.Slot0.kP = ShooterConstants.kP;
+        config.Slot0.kI = ShooterConstants.kI;
+        config.Slot0.kD = ShooterConstants.kD;
+        config.Slot0.kV = ShooterConstants.kV;
+
+        masterMotor.getConfigurator().apply(config);
+        followerMotor.getConfigurator().apply(config);
+
+        followerMotor.setControl(new Follower(ShooterConstants.kMasterCanId, MotorAlignmentValue.Opposed));
+    }
+
+    @Override
+    public void periodic() {
+        if (targetRPS <= 0) {
+            masterMotor.setControl(stopRequest);
+        } else {
+            masterMotor.setControl(velocityRequest.withVelocity(targetRPS));
+        }
+    }
+
+    public boolean isAtSpeed() {
+        if (RobotBase.isSimulation()) {
+            return targetRPS > 0;
+        }
+        double currentRPS = masterMotor.getVelocity().getValueAsDouble();
+        return Math.abs(currentRPS - targetRPS) <= ShooterConstants.kRPSTolerance;
+    }
+
+    public Command spinUpCommand(double rps) {
+        return this.runOnce(() -> this.targetRPS = rps);
+    }
+
+    public Command stopCommand() {
+        return this.runOnce(() -> this.targetRPS = 0.0);
+    }
+}
+</file>
+
+<file path="src/main/java/frc/robot/Constants.java">
+package frc.robot;
+
+public final class Constants {
+
+    public static final class RobotModeConstants {
+   
+        public static final boolean IS_ATTACHMENTS_MOUNTED = false;
+    }
+
+    public static final class IntakeConstants {
+        public static final int kIntakeMotorCanId = 13;
+        public static final int kBeamBreakDioChannel = 0;
+        public static final double kIntakeVoltage = 8.0;
+        public static final double kEjectVoltage = -6.0;
+    }
+
+    public static final class ArmConstants {
+        public static final int kArmMotorCanId = 14;
+        public static final double kArmGearRatio = 50.0;
+
+        public static final double kP = 12.0;
+        public static final double kI = 0.0;
+        public static final double kD = 0.5;
+        public static final double kG = 0.4;
+
+        public static final double kMinPositionRotations = 0.0;
+        public static final double kMaxPositionRotations = 0.305;
+    }
+
+    public static final class ElevatorConstants {
+        public static final int kElevatorMotorCanId = 16;
+        public static final double kElevatorGearRatio = 10.0;
+        public static final double kDrumRadiusMeters = 0.025;
+
+        public static final double kP = 20.0;
+        public static final double kI = 0.0;
+        public static final double kD = 0.2;
+        public static final double kG = 0.6;
+
+        public static final double kMinHeightRotations = 0.0;
+        public static final double kMaxHeightRotations = 9.55;
+    }
+
+    public static final class ShooterConstants {
+        public static final int kMasterCanId = 17;
+        public static final int kFollowerCanId = 18;
+
+        public static final double kP = 0.1;
+        public static final double kI = 0.0;
+        public static final double kD = 0.0;
+        public static final double kV = 0.12;
+
+        public static final double kTargetRPS = 75.0;
+        public static final double kRPSTolerance = 2.0;
+    }
+
+    public static final class VisionConstants {
+        public static final String kLimelightName = "limelight";
+
+        public static final double kForwardMeters = 0.25;
+        public static final double kSideMeters = 0.0;
+        public static final double kUpMeters = 0.45;
+
+        public static final double kRollDegrees = 0.0;
+        public static final double kPitchDegrees = 25.0;
+        public static final double kYawDegrees = 0.0;
+    }
+}
+</file>
+
+<file path="src/main/java/frc/robot/LimelightHelpers.java">
+//LimelightHelpers v1.14 (REQUIRES LLOS 2026.0 OR LATER)
+
+package frc.robot;
+
+import edu.wpi.first.networktables.DoubleArrayEntry;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableEntry;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.TimestampedDoubleArray;
+import frc.robot.LimelightHelpers.LimelightResults;
+import frc.robot.LimelightHelpers.PoseEstimate;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.util.Units;
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Translation2d;
+
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.Map;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonFormat.Shape;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.concurrent.ConcurrentHashMap;
+import edu.wpi.first.net.PortForwarder;
+
+/**
+ * LimelightHelpers provides static methods and classes for interfacing with Limelight vision cameras in FRC.
+ * This library supports all Limelight features including AprilTag tracking, Neural Networks, and standard color/retroreflective tracking.
+ */
+public class LimelightHelpers {
+
+    private static final Map<String, DoubleArrayEntry> doubleArrayEntries = new ConcurrentHashMap<>();
+
+    /**
+     * Represents a Color/Retroreflective Target Result extracted from JSON Output
+     */
+    public static class LimelightTarget_Retro {
+
+        @JsonProperty("t6c_ts")
+        private double[] cameraPose_TargetSpace;
+
+        @JsonProperty("t6r_fs")
+        private double[] robotPose_FieldSpace;
+
+        @JsonProperty("t6r_ts")
+        private  double[] robotPose_TargetSpace;
+
+        @JsonProperty("t6t_cs")
+        private double[] targetPose_CameraSpace;
+
+        @JsonProperty("t6t_rs")
+        private double[] targetPose_RobotSpace;
+
+        public Pose3d getCameraPose_TargetSpace()
+        {
+            return toPose3D(cameraPose_TargetSpace);
+        }
+        public Pose3d getRobotPose_FieldSpace()
+        {
+            return toPose3D(robotPose_FieldSpace);
+        }
+        public Pose3d getRobotPose_TargetSpace()
+        {
+            return toPose3D(robotPose_TargetSpace);
+        }
+        public Pose3d getTargetPose_CameraSpace()
+        {
+            return toPose3D(targetPose_CameraSpace);
+        }
+        public Pose3d getTargetPose_RobotSpace()
+        {
+            return toPose3D(targetPose_RobotSpace);
+        }
+
+        public Pose2d getCameraPose_TargetSpace2D()
+        {
+            return toPose2D(cameraPose_TargetSpace);
+        }
+        public Pose2d getRobotPose_FieldSpace2D()
+        {
+            return toPose2D(robotPose_FieldSpace);
+        }
+        public Pose2d getRobotPose_TargetSpace2D()
+        {
+            return toPose2D(robotPose_TargetSpace);
+        }
+        public Pose2d getTargetPose_CameraSpace2D()
+        {
+            return toPose2D(targetPose_CameraSpace);
+        }
+        public Pose2d getTargetPose_RobotSpace2D()
+        {
+            return toPose2D(targetPose_RobotSpace);
+        }
+
+        @JsonProperty("ta")
+        public double ta;
+
+        @JsonProperty("tx")
+        public double tx;
+        
+        @JsonProperty("ty")
+        public double ty;
+
+        @JsonProperty("txp")
+        public double tx_pixels;
+
+        @JsonProperty("typ")
+        public double ty_pixels;
+
+        @JsonProperty("tx_nocross")
+        public double tx_nocrosshair;
+
+        @JsonProperty("ty_nocross")
+        public double ty_nocrosshair;
+
+        @JsonProperty("ts")
+        public double ts;
+
+        public LimelightTarget_Retro() {
+            cameraPose_TargetSpace = new double[6];
+            robotPose_FieldSpace = new double[6];
+            robotPose_TargetSpace = new double[6];
+            targetPose_CameraSpace = new double[6];
+            targetPose_RobotSpace = new double[6];
+        }
+
+    }
+
+    /**
+     * Represents an AprilTag/Fiducial Target Result extracted from JSON Output
+     */
+    public static class LimelightTarget_Fiducial {
+
+        @JsonProperty("fID")
+        public double fiducialID;
+
+        @JsonProperty("fam")
+        public String fiducialFamily;
+
+        @JsonProperty("t6c_ts")
+        private double[] cameraPose_TargetSpace;
+
+        @JsonProperty("t6r_fs")
+        private double[] robotPose_FieldSpace;
+
+        @JsonProperty("t6r_ts")
+        private double[] robotPose_TargetSpace;
+
+        @JsonProperty("t6t_cs")
+        private double[] targetPose_CameraSpace;
+
+        @JsonProperty("t6t_rs")
+        private double[] targetPose_RobotSpace;
+
+        public Pose3d getCameraPose_TargetSpace()
+        {
+            return toPose3D(cameraPose_TargetSpace);
+        }
+        public Pose3d getRobotPose_FieldSpace()
+        {
+            return toPose3D(robotPose_FieldSpace);
+        }
+        public Pose3d getRobotPose_TargetSpace()
+        {
+            return toPose3D(robotPose_TargetSpace);
+        }
+        public Pose3d getTargetPose_CameraSpace()
+        {
+            return toPose3D(targetPose_CameraSpace);
+        }
+        public Pose3d getTargetPose_RobotSpace()
+        {
+            return toPose3D(targetPose_RobotSpace);
+        }
+
+        public Pose2d getCameraPose_TargetSpace2D()
+        {
+            return toPose2D(cameraPose_TargetSpace);
+        }
+        public Pose2d getRobotPose_FieldSpace2D()
+        {
+            return toPose2D(robotPose_FieldSpace);
+        }
+        public Pose2d getRobotPose_TargetSpace2D()
+        {
+            return toPose2D(robotPose_TargetSpace);
+        }
+        public Pose2d getTargetPose_CameraSpace2D()
+        {
+            return toPose2D(targetPose_CameraSpace);
+        }
+        public Pose2d getTargetPose_RobotSpace2D()
+        {
+            return toPose2D(targetPose_RobotSpace);
+        }
+        
+        @JsonProperty("ta")
+        public double ta;
+
+        @JsonProperty("tx")
+        public double tx;
+
+        @JsonProperty("ty")
+        public double ty;
+
+        @JsonProperty("txp")
+        public double tx_pixels;
+
+        @JsonProperty("typ")
+        public double ty_pixels;
+
+        @JsonProperty("tx_nocross")
+        public double tx_nocrosshair;
+
+        @JsonProperty("ty_nocross")
+        public double ty_nocrosshair;
+
+        @JsonProperty("ts")
+        public double ts;
+        
+        public LimelightTarget_Fiducial() {
+            cameraPose_TargetSpace = new double[6];
+            robotPose_FieldSpace = new double[6];
+            robotPose_TargetSpace = new double[6];
+            targetPose_CameraSpace = new double[6];
+            targetPose_RobotSpace = new double[6];
+        }
+    }
+
+    /**
+     * Represents a Barcode Target Result extracted from JSON Output
+     */
+    public static class LimelightTarget_Barcode {
+
+        /**
+         * Barcode family type (e.g. "QR", "DataMatrix", etc.)
+         */
+        @JsonProperty("fam")
+        public String family;
+
+        /**
+         * Gets the decoded data content of the barcode
+         */
+        @JsonProperty("data") 
+        public String data;
+
+        @JsonProperty("txp")
+        public double tx_pixels;
+
+        @JsonProperty("typ")
+        public double ty_pixels;
+
+        @JsonProperty("tx")
+        public double tx;
+
+        @JsonProperty("ty")
+        public double ty;
+
+        @JsonProperty("tx_nocross")
+        public double tx_nocrosshair;
+
+        @JsonProperty("ty_nocross")
+        public double ty_nocrosshair;
+
+        @JsonProperty("ta")
+        public double ta;
+
+        @JsonProperty("pts")
+        public double[][] corners;
+
+        public LimelightTarget_Barcode() {
+        }
+
+        public String getFamily() {
+            return family;
+        }
+    }
+
+    /**
+     * Represents a Neural Classifier Pipeline Result extracted from JSON Output
+     */
+    public static class LimelightTarget_Classifier {
+
+        @JsonProperty("class")
+        public String className;
+
+        @JsonProperty("classID")
+        public double classID;
+
+        @JsonProperty("conf")
+        public double confidence;
+
+        @JsonProperty("zone")
+        public double zone;
+
+        @JsonProperty("tx")
+        public double tx;
+
+        @JsonProperty("txp")
+        public double tx_pixels;
+
+        @JsonProperty("ty")
+        public double ty;
+
+        @JsonProperty("typ")
+        public double ty_pixels;
+
+        public  LimelightTarget_Classifier() {
+        }
+    }
+
+    /**
+     * Represents a Neural Detector Pipeline Result extracted from JSON Output
+     */
+    public static class LimelightTarget_Detector {
+
+        @JsonProperty("class")
+        public String className;
+
+        @JsonProperty("classID")
+        public double classID;
+
+        @JsonProperty("conf")
+        public double confidence;
+
+        @JsonProperty("ta")
+        public double ta;
+
+        @JsonProperty("tx")
+        public double tx;
+
+        @JsonProperty("ty")
+        public double ty;
+
+        @JsonProperty("txp")
+        public double tx_pixels;
+
+        @JsonProperty("typ")
+        public double ty_pixels;
+
+        @JsonProperty("tx_nocross")
+        public double tx_nocrosshair;
+
+        @JsonProperty("ty_nocross")
+        public double ty_nocrosshair;
+
+        public LimelightTarget_Detector() {
+        }
+    }
+
+    /**
+     * Represents hardware statistics from the Limelight.
+     */
+    public static class HardwareReport {
+        @JsonProperty("cid")
+        public String cameraId;
+
+        @JsonProperty("cpu")
+        public double cpuUsage;
+
+        @JsonProperty("dfree")
+        public double diskFree;
+
+        @JsonProperty("dtot")
+        public double diskTotal;
+
+        @JsonProperty("ram")
+        public double ramUsage;
+
+        @JsonProperty("temp")
+        public double temperature;
+
+        public HardwareReport() {
+        }
+    }
+
+    /**
+     * Represents IMU data from the JSON results.
+     */
+    public static class IMUResults {
+        @JsonProperty("data")
+        public double[] data;
+
+        @JsonProperty("quat")
+        public double[] quaternion;
+
+        @JsonProperty("yaw")
+        public double yaw;
+
+        // Parsed from data array
+        public double robotYaw;
+        public double roll;
+        public double pitch;
+        public double rawYaw;
+        public double gyroZ;
+        public double gyroX;
+        public double gyroY;
+        public double accelZ;
+        public double accelX;
+        public double accelY;
+
+        public IMUResults() {
+            data = new double[0];
+            quaternion = new double[4];
+        }
+
+        public void parseDataArray() {
+            if (data != null && data.length >= 10) {
+                robotYaw = data[0];
+                roll = data[1];
+                pitch = data[2];
+                rawYaw = data[3];
+                gyroZ = data[4];
+                gyroX = data[5];
+                gyroY = data[6];
+                accelZ = data[7];
+                accelX = data[8];
+                accelY = data[9];
+            }
+        }
+    }
+
+    /**
+     * Represents capture rewind buffer statistics.
+     */
+    public static class RewindStats {
+        @JsonProperty("bufferUsage")
+        public double bufferUsage;
+
+        @JsonProperty("enabled")
+        public int enabled;
+
+        @JsonProperty("flushing")
+        public int flushing;
+
+        @JsonProperty("frameCount")
+        public int frameCount;
+
+        @JsonProperty("latpen")
+        public int latencyPenalty;
+
+        @JsonProperty("storedSeconds")
+        public double storedSeconds;
+
+        public RewindStats() {
+        }
+    }
+
+    /**
+     * Limelight Results object, parsed from a Limelight's JSON results output.
+     */
+    public static class LimelightResults {
+        
+        public String error;
+        
+        @JsonProperty("pID")
+        public double pipelineID;
+
+        @JsonProperty("tl")
+        public double latency_pipeline;
+
+        @JsonProperty("cl")
+        public double latency_capture;
+
+        public double latency_jsonParse;
+
+        @JsonProperty("ts")
+        public double timestamp_LIMELIGHT_publish;
+
+        @JsonProperty("ts_rio")
+        public double timestamp_RIOFPGA_capture;
+
+        @JsonProperty("ts_nt")
+        public long timestamp_nt;
+
+        @JsonProperty("ts_sys")
+        public long timestamp_sys;
+
+        @JsonProperty("ts_us")
+        public long timestamp_us;
+
+        @JsonProperty("v")
+        @JsonFormat(shape = Shape.NUMBER)
+        public boolean valid;
+
+        @JsonProperty("pTYPE")
+        public String pipelineType;
+
+        @JsonProperty("tx")
+        public double tx;
+
+        @JsonProperty("ty")
+        public double ty;
+
+        @JsonProperty("txnc")
+        public double tx_nocrosshair;
+
+        @JsonProperty("tync")
+        public double ty_nocrosshair;
+
+        @JsonProperty("ta")
+        public double ta;
+
+        @JsonProperty("botpose")
+        public double[] botpose;
+
+        @JsonProperty("botpose_wpired")
+        public double[] botpose_wpired;
+
+        @JsonProperty("botpose_wpiblue")
+        public double[] botpose_wpiblue;
+
+        @JsonProperty("botpose_tagcount")
+        public double botpose_tagcount;
+       
+        @JsonProperty("botpose_span")
+        public double botpose_span;
+       
+        @JsonProperty("botpose_avgdist")
+        public double botpose_avgdist;
+       
+        @JsonProperty("botpose_avgarea")
+        public double botpose_avgarea;
+
+        @JsonProperty("botpose_orb")
+        public double[] botpose_orb;
+
+        @JsonProperty("botpose_orb_wpiblue")
+        public double[] botpose_orb_wpiblue;
+
+        @JsonProperty("botpose_orb_wpired")
+        public double[] botpose_orb_wpired;
+
+        @JsonProperty("t6c_rs")
+        public double[] camerapose_robotspace;
+
+        @JsonProperty("hw")
+        public HardwareReport hardware;
+
+        @JsonProperty("imu")
+        public IMUResults imuResults;
+
+        @JsonProperty("rewind")
+        public RewindStats rewindStats;
+
+        @JsonProperty("PythonOut")
+        public double[] pythonOutput;
+
+        public Pose3d getBotPose3d() {
+            return toPose3D(botpose);
+        }
+    
+        public Pose3d getBotPose3d_wpiRed() {
+            return toPose3D(botpose_wpired);
+        }
+    
+        public Pose3d getBotPose3d_wpiBlue() {
+            return toPose3D(botpose_wpiblue);
+        }
+
+        public Pose2d getBotPose2d() {
+            return toPose2D(botpose);
+        }
+    
+        public Pose2d getBotPose2d_wpiRed() {
+            return toPose2D(botpose_wpired);
+        }
+    
+        public Pose2d getBotPose2d_wpiBlue() {
+            return toPose2D(botpose_wpiblue);
+        }
+
+        @JsonProperty("Retro")
+        public LimelightTarget_Retro[] targets_Retro;
+
+        @JsonProperty("Fiducial")
+        public LimelightTarget_Fiducial[] targets_Fiducials;
+
+        @JsonProperty("Classifier")
+        public LimelightTarget_Classifier[] targets_Classifier;
+
+        @JsonProperty("Detector")
+        public LimelightTarget_Detector[] targets_Detector;
+
+        @JsonProperty("Barcode")
+        public LimelightTarget_Barcode[] targets_Barcode;
+
+        public LimelightResults() {
+            botpose = new double[6];
+            botpose_wpired = new double[6];
+            botpose_wpiblue = new double[6];
+            botpose_orb = new double[6];
+            botpose_orb_wpiblue = new double[6];
+            botpose_orb_wpired = new double[6];
+            camerapose_robotspace = new double[6];
+            targets_Retro = new LimelightTarget_Retro[0];
+            targets_Fiducials = new LimelightTarget_Fiducial[0];
+            targets_Classifier = new LimelightTarget_Classifier[0];
+            targets_Detector = new LimelightTarget_Detector[0];
+            targets_Barcode = new LimelightTarget_Barcode[0];
+            pythonOutput = new double[0];
+            pipelineType = "";
+        }
+
+
+    }
+
+    /**
+     * Represents a Limelight Raw Fiducial result from Limelight's NetworkTables output.
+     */
+    public static class RawFiducial {
+        public int id = 0;
+        public double txnc = 0;
+        public double tync = 0;
+        public double ta = 0;
+        public double distToCamera = 0;
+        public double distToRobot = 0;
+        public double ambiguity = 0;
+
+
+        public RawFiducial(int id, double txnc, double tync, double ta, double distToCamera, double distToRobot, double ambiguity) {
+            this.id = id;
+            this.txnc = txnc;
+            this.tync = tync;
+            this.ta = ta;
+            this.distToCamera = distToCamera;
+            this.distToRobot = distToRobot;
+            this.ambiguity = ambiguity;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null || getClass() != obj.getClass()) return false;
+            RawFiducial other = (RawFiducial) obj;
+            return id == other.id &&
+                Double.compare(txnc, other.txnc) == 0 &&
+                Double.compare(tync, other.tync) == 0 &&
+                Double.compare(ta, other.ta) == 0 &&
+                Double.compare(distToCamera, other.distToCamera) == 0 &&
+                Double.compare(distToRobot, other.distToRobot) == 0 &&
+                Double.compare(ambiguity, other.ambiguity) == 0;
+        }
+
+    }
+
+    /**
+     * Represents a Limelight Raw Target/Contour result from Limelight's NetworkTables output.
+     */
+    public static class RawTarget {
+        public double txnc = 0;
+        public double tync = 0;
+        public double ta = 0;
+
+        public RawTarget(double txnc, double tync, double ta) {
+            this.txnc = txnc;
+            this.tync = tync;
+            this.ta = ta;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null || getClass() != obj.getClass()) return false;
+            RawTarget other = (RawTarget) obj;
+            return Double.compare(txnc, other.txnc) == 0 &&
+                Double.compare(tync, other.tync) == 0 &&
+                Double.compare(ta, other.ta) == 0;
+        }
+    }
+
+    /**
+     * Represents a Limelight Raw Neural Detector result from Limelight's NetworkTables output.
+     */
+    public static class RawDetection {
+        public int classId = 0;
+        public double txnc = 0;
+        public double tync = 0;
+        public double ta = 0;
+        public double corner0_X = 0;
+        public double corner0_Y = 0;
+        public double corner1_X = 0;
+        public double corner1_Y = 0;
+        public double corner2_X = 0;
+        public double corner2_Y = 0;
+        public double corner3_X = 0;
+        public double corner3_Y = 0;
+
+
+        public RawDetection(int classId, double txnc, double tync, double ta, 
+            double corner0_X, double corner0_Y, 
+            double corner1_X, double corner1_Y, 
+            double corner2_X, double corner2_Y, 
+            double corner3_X, double corner3_Y ) {
+            this.classId = classId;
+            this.txnc = txnc;
+            this.tync = tync;
+            this.ta = ta;
+            this.corner0_X = corner0_X;
+            this.corner0_Y = corner0_Y;
+            this.corner1_X = corner1_X;
+            this.corner1_Y = corner1_Y;
+            this.corner2_X = corner2_X;
+            this.corner2_Y = corner2_Y;
+            this.corner3_X = corner3_X;
+            this.corner3_Y = corner3_Y;
+        }
+    }
+    
+    /**
+     * Represents a 3D Pose Estimate.
+     */
+    public static class PoseEstimate {
+        public Pose2d pose;
+        public double timestampSeconds;
+        public double latency;
+        public int tagCount;
+        public double tagSpan;
+        public double avgTagDist;
+        public double avgTagArea;
+
+        public RawFiducial[] rawFiducials; 
+        public boolean isMegaTag2;
+
+        /**
+         * Instantiates a PoseEstimate object with default values
+         */
+        public PoseEstimate() {
+            this.pose = new Pose2d();
+            this.timestampSeconds = 0;
+            this.latency = 0;
+            this.tagCount = 0;
+            this.tagSpan = 0;
+            this.avgTagDist = 0;
+            this.avgTagArea = 0;
+            this.rawFiducials = new RawFiducial[]{};
+            this.isMegaTag2 = false;
+        }
+
+        public PoseEstimate(Pose2d pose, double timestampSeconds, double latency, 
+            int tagCount, double tagSpan, double avgTagDist, 
+            double avgTagArea, RawFiducial[] rawFiducials, boolean isMegaTag2) {
+
+            this.pose = pose;
+            this.timestampSeconds = timestampSeconds;
+            this.latency = latency;
+            this.tagCount = tagCount;
+            this.tagSpan = tagSpan;
+            this.avgTagDist = avgTagDist;
+            this.avgTagArea = avgTagArea;
+            this.rawFiducials = rawFiducials;
+            this.isMegaTag2 = isMegaTag2;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null || getClass() != obj.getClass()) return false;
+            PoseEstimate that = (PoseEstimate) obj;
+            // We don't compare the timestampSeconds as it isn't relevant for equality and makes
+            // unit testing harder
+            return Double.compare(that.latency, latency) == 0
+                && tagCount == that.tagCount
+                && Double.compare(that.tagSpan, tagSpan) == 0
+                && Double.compare(that.avgTagDist, avgTagDist) == 0
+                && Double.compare(that.avgTagArea, avgTagArea) == 0
+                && pose.equals(that.pose)
+                && Arrays.equals(rawFiducials, that.rawFiducials);
+        }
+
+    }
+
+    /**
+     * Encapsulates the state of an internal Limelight IMU.
+     */
+    public static class IMUData {
+        public double robotYaw = 0.0;
+        public double Roll = 0.0;
+        public double Pitch = 0.0;
+        public double Yaw = 0.0;
+        public double gyroX = 0.0;
+        public double gyroY = 0.0;
+        public double gyroZ = 0.0;
+        public double accelX = 0.0;
+        public double accelY = 0.0;
+        public double accelZ = 0.0;
+
+        public IMUData() {}
+
+        public IMUData(double[] imuData) {
+            if (imuData != null && imuData.length >= 10) {
+                this.robotYaw = imuData[0];
+                this.Roll = imuData[1];
+                this.Pitch = imuData[2];
+                this.Yaw = imuData[3];
+                this.gyroX = imuData[4];
+                this.gyroY = imuData[5];
+                this.gyroZ = imuData[6];
+                this.accelX = imuData[7];
+                this.accelY = imuData[8];
+                this.accelZ = imuData[9];
+            }
+        }
+    }
+
+
+    private static ObjectMapper mapper;
+
+    /**
+     * Print JSON Parse time to the console in milliseconds
+     */
+    static boolean profileJSON = false;
+
+    static final String sanitizeName(String name) {
+        if ("".equals(name) || name == null) {
+            return "limelight";
+        }
+        return name;
+    }
+
+    /**
+     * Takes a 6-length array of pose data and converts it to a Pose3d object.
+     * Array format: [x, y, z, roll, pitch, yaw] where angles are in degrees.
+     * @param inData Array containing pose data [x, y, z, roll, pitch, yaw]
+     * @return Pose3d object representing the pose, or empty Pose3d if invalid data
+     */
+    public static Pose3d toPose3D(double[] inData){
+        if(inData.length < 6)
+        {
+            //System.err.println("Bad LL 3D Pose Data!");
+            return new Pose3d();
+        }
+        return new Pose3d(
+            new Translation3d(inData[0], inData[1], inData[2]),
+            new Rotation3d(Units.degreesToRadians(inData[3]), Units.degreesToRadians(inData[4]),
+                    Units.degreesToRadians(inData[5])));
+    }
+
+    /**
+     * Takes a 6-length array of pose data and converts it to a Pose2d object.
+     * Uses only x, y, and yaw components, ignoring z, roll, and pitch.
+     * Array format: [x, y, z, roll, pitch, yaw] where angles are in degrees.
+     * @param inData Array containing pose data [x, y, z, roll, pitch, yaw]
+     * @return Pose2d object representing the pose, or empty Pose2d if invalid data
+     */
+    public static Pose2d toPose2D(double[] inData){
+        if(inData.length < 6)
+        {
+            //System.err.println("Bad LL 2D Pose Data!");
+            return new Pose2d();
+        }
+        Translation2d tran2d = new Translation2d(inData[0], inData[1]);
+        Rotation2d r2d = new Rotation2d(Units.degreesToRadians(inData[5]));
+        return new Pose2d(tran2d, r2d);
+    }
+
+    /**
+     * Converts a Pose3d object to an array of doubles in the format [x, y, z, roll, pitch, yaw].
+     * Translation components are in meters, rotation components are in degrees.
+     * 
+     * @param pose The Pose3d object to convert
+     * @return A 6-element array containing [x, y, z, roll, pitch, yaw]
+     */
+    public static double[] pose3dToArray(Pose3d pose) {
+        double[] result = new double[6];
+        result[0] = pose.getTranslation().getX();
+        result[1] = pose.getTranslation().getY();
+        result[2] = pose.getTranslation().getZ();
+        result[3] = Units.radiansToDegrees(pose.getRotation().getX());
+        result[4] = Units.radiansToDegrees(pose.getRotation().getY());
+        result[5] = Units.radiansToDegrees(pose.getRotation().getZ());
+        return result;
+    }
+
+    /**
+     * Converts a Pose2d object to an array of doubles in the format [x, y, z, roll, pitch, yaw].
+     * Translation components are in meters, rotation components are in degrees.
+     * Note: z, roll, and pitch will be 0 since Pose2d only contains x, y, and yaw.
+     * 
+     * @param pose The Pose2d object to convert
+     * @return A 6-element array containing [x, y, 0, 0, 0, yaw]
+     */
+    public static double[] pose2dToArray(Pose2d pose) {
+        double[] result = new double[6];
+        result[0] = pose.getTranslation().getX();
+        result[1] = pose.getTranslation().getY();
+        result[2] = 0;
+        result[3] = Units.radiansToDegrees(0);
+        result[4] = Units.radiansToDegrees(0);
+        result[5] = Units.radiansToDegrees(pose.getRotation().getRadians());
+        return result;
+    }
+
+    private static double extractArrayEntry(double[] inData, int position){
+        if(inData.length < position+1)
+        {
+            return 0;
+        }
+        return inData[position];
+    }
+
+    private static PoseEstimate getBotPoseEstimate(String limelightName, String entryName, boolean isMegaTag2) {
+        DoubleArrayEntry poseEntry = LimelightHelpers.getLimelightDoubleArrayEntry(limelightName, entryName);
+        
+        TimestampedDoubleArray tsValue = poseEntry.getAtomic();
+        double[] poseArray = tsValue.value;
+        long timestamp = tsValue.timestamp;
+        
+        if (poseArray.length == 0) {
+            // Handle the case where no data is available
+            return new PoseEstimate();
+        }
+    
+        var pose = toPose2D(poseArray);
+        double latency = extractArrayEntry(poseArray, 6);
+        int tagCount = (int)extractArrayEntry(poseArray, 7);
+        double tagSpan = extractArrayEntry(poseArray, 8);
+        double tagDist = extractArrayEntry(poseArray, 9);
+        double tagArea = extractArrayEntry(poseArray, 10);
+        
+        // Convert server timestamp from microseconds to seconds and adjust for latency
+        double adjustedTimestamp = (timestamp / 1000000.0) - (latency / 1000.0);
+    
+        int valsPerFiducial = 7;
+        int expectedTotalVals = 11 + valsPerFiducial * tagCount;
+        RawFiducial[] rawFiducials;
+
+        if (poseArray.length != expectedTotalVals) {
+            // Array size mismatch - return empty array instead of null-filled array
+            rawFiducials = new RawFiducial[0];
+        } else {
+            rawFiducials = new RawFiducial[tagCount];
+            for(int i = 0; i < tagCount; i++) {
+                int baseIndex = 11 + (i * valsPerFiducial);
+                int id = (int)poseArray[baseIndex];
+                double txnc = poseArray[baseIndex + 1];
+                double tync = poseArray[baseIndex + 2];
+                double ta = poseArray[baseIndex + 3];
+                double distToCamera = poseArray[baseIndex + 4];
+                double distToRobot = poseArray[baseIndex + 5];
+                double ambiguity = poseArray[baseIndex + 6];
+                rawFiducials[i] = new RawFiducial(id, txnc, tync, ta, distToCamera, distToRobot, ambiguity);
+            }
+        }
+    
+        return new PoseEstimate(pose, adjustedTimestamp, latency, tagCount, tagSpan, tagDist, tagArea, rawFiducials, isMegaTag2);
+    }
+
+    /**
+     * Gets the latest raw fiducial/AprilTag detection results from NetworkTables.
+     * 
+     * @param limelightName Name/identifier of the Limelight
+     * @return Array of RawFiducial objects containing detection details
+     */
+    public static RawFiducial[] getRawFiducials(String limelightName) {
+        var entry = LimelightHelpers.getLimelightNTTableEntry(limelightName, "rawfiducials");
+        var rawFiducialArray = entry.getDoubleArray(new double[0]);
+        int valsPerEntry = 7;
+        if (rawFiducialArray.length % valsPerEntry != 0) {
+            return new RawFiducial[0];
+        }
+    
+        int numFiducials = rawFiducialArray.length / valsPerEntry;
+        RawFiducial[] rawFiducials = new RawFiducial[numFiducials];
+    
+        for (int i = 0; i < numFiducials; i++) {
+            int baseIndex = i * valsPerEntry;
+            int id = (int) extractArrayEntry(rawFiducialArray, baseIndex);
+            double txnc = extractArrayEntry(rawFiducialArray, baseIndex + 1);
+            double tync = extractArrayEntry(rawFiducialArray, baseIndex + 2);
+            double ta = extractArrayEntry(rawFiducialArray, baseIndex + 3);
+            double distToCamera = extractArrayEntry(rawFiducialArray, baseIndex + 4);
+            double distToRobot = extractArrayEntry(rawFiducialArray, baseIndex + 5);
+            double ambiguity = extractArrayEntry(rawFiducialArray, baseIndex + 6);
+            
+            rawFiducials[i] = new RawFiducial(id, txnc, tync, ta, distToCamera, distToRobot, ambiguity);
+        }
+    
+        return rawFiducials;
+    }
+
+    /**
+     * Gets the latest raw neural detector results from NetworkTables
+     *
+     * @param limelightName Name/identifier of the Limelight
+     * @return Array of RawDetection objects containing detection details
+     */
+    public static RawDetection[] getRawDetections(String limelightName) {
+        var entry = LimelightHelpers.getLimelightNTTableEntry(limelightName, "rawdetections");
+        var rawDetectionArray = entry.getDoubleArray(new double[0]);
+        int valsPerEntry = 12;
+        if (rawDetectionArray.length % valsPerEntry != 0) {
+            return new RawDetection[0];
+        }
+    
+        int numDetections = rawDetectionArray.length / valsPerEntry;
+        RawDetection[] rawDetections = new RawDetection[numDetections];
+    
+        for (int i = 0; i < numDetections; i++) {
+            int baseIndex = i * valsPerEntry; // Starting index for this detection's data
+            int classId = (int) extractArrayEntry(rawDetectionArray, baseIndex);
+            double txnc = extractArrayEntry(rawDetectionArray, baseIndex + 1);
+            double tync = extractArrayEntry(rawDetectionArray, baseIndex + 2);
+            double ta = extractArrayEntry(rawDetectionArray, baseIndex + 3);
+            double corner0_X = extractArrayEntry(rawDetectionArray, baseIndex + 4);
+            double corner0_Y = extractArrayEntry(rawDetectionArray, baseIndex + 5);
+            double corner1_X = extractArrayEntry(rawDetectionArray, baseIndex + 6);
+            double corner1_Y = extractArrayEntry(rawDetectionArray, baseIndex + 7);
+            double corner2_X = extractArrayEntry(rawDetectionArray, baseIndex + 8);
+            double corner2_Y = extractArrayEntry(rawDetectionArray, baseIndex + 9);
+            double corner3_X = extractArrayEntry(rawDetectionArray, baseIndex + 10);
+            double corner3_Y = extractArrayEntry(rawDetectionArray, baseIndex + 11);
+            
+            rawDetections[i] = new RawDetection(classId, txnc, tync, ta, corner0_X, corner0_Y, corner1_X, corner1_Y, corner2_X, corner2_Y, corner3_X, corner3_Y);
+        }
+    
+        return rawDetections;
+    }
+
+    /**
+     * Gets the raw target contours from NetworkTables.
+     * Returns ungrouped contours in normalized screen space (-1 to 1).
+     *
+     * @param limelightName Name/identifier of the Limelight
+     * @return Array of RawTarget objects containing up to 3 contours
+     */
+    public static RawTarget[] getRawTargets(String limelightName) {
+        var entry = LimelightHelpers.getLimelightNTTableEntry(limelightName, "rawtargets");
+        var rawTargetArray = entry.getDoubleArray(new double[0]);
+        int valsPerEntry = 3;
+        if (rawTargetArray.length % valsPerEntry != 0) {
+            return new RawTarget[0];
+        }
+
+        int numTargets = rawTargetArray.length / valsPerEntry;
+        RawTarget[] rawTargets = new RawTarget[numTargets];
+
+        for (int i = 0; i < numTargets; i++) {
+            int baseIndex = i * valsPerEntry;
+            double txnc = extractArrayEntry(rawTargetArray, baseIndex);
+            double tync = extractArrayEntry(rawTargetArray, baseIndex + 1);
+            double ta = extractArrayEntry(rawTargetArray, baseIndex + 2);
+
+            rawTargets[i] = new RawTarget(txnc, tync, ta);
+        }
+
+        return rawTargets;
+    }
+
+    /**
+     * Gets the corner coordinates of detected targets from NetworkTables.
+     * Requires "send contours" to be enabled in the Limelight Output tab.
+     *
+     * @param limelightName Name/identifier of the Limelight
+     * @return Array of doubles containing corner coordinates [x0, y0, x1, y1, ...]
+     */
+    public static double[] getCornerCoordinates(String limelightName) {
+        return getLimelightNTDoubleArray(limelightName, "tcornxy");
+    }
+
+    /**
+     * Prints detailed information about a PoseEstimate to standard output.
+     * Includes timestamp, latency, tag count, tag span, average tag distance,
+     * average tag area, and detailed information about each detected fiducial.
+     *
+     * @param pose The PoseEstimate object to print. If null, prints "No PoseEstimate available."
+     */
+    public static void printPoseEstimate(PoseEstimate pose) {
+        if (pose == null) {
+            System.out.println("No PoseEstimate available.");
+            return;
+        }
+    
+        System.out.printf("Pose Estimate Information:%n");
+        System.out.printf("Timestamp (Seconds): %.3f%n", pose.timestampSeconds);
+        System.out.printf("Latency: %.3f ms%n", pose.latency);
+        System.out.printf("Tag Count: %d%n", pose.tagCount);
+        System.out.printf("Tag Span: %.2f meters%n", pose.tagSpan);
+        System.out.printf("Average Tag Distance: %.2f meters%n", pose.avgTagDist);
+        System.out.printf("Average Tag Area: %.2f%% of image%n", pose.avgTagArea);
+        System.out.printf("Is MegaTag2: %b%n", pose.isMegaTag2);
+        System.out.println();
+    
+        if (pose.rawFiducials == null || pose.rawFiducials.length == 0) {
+            System.out.println("No RawFiducials data available.");
+            return;
+        }
+    
+        System.out.println("Raw Fiducials Details:");
+        for (int i = 0; i < pose.rawFiducials.length; i++) {
+            RawFiducial fiducial = pose.rawFiducials[i];
+            System.out.printf(" Fiducial #%d:%n", i + 1);
+            System.out.printf("  ID: %d%n", fiducial.id);
+            System.out.printf("  TXNC: %.2f%n", fiducial.txnc);
+            System.out.printf("  TYNC: %.2f%n", fiducial.tync);
+            System.out.printf("  TA: %.2f%n", fiducial.ta);
+            System.out.printf("  Distance to Camera: %.2f meters%n", fiducial.distToCamera);
+            System.out.printf("  Distance to Robot: %.2f meters%n", fiducial.distToRobot);
+            System.out.printf("  Ambiguity: %.2f%n", fiducial.ambiguity);
+            System.out.println();
+        }
+    }
+
+    public static Boolean validPoseEstimate(PoseEstimate pose) {
+        return pose != null && pose.rawFiducials != null && pose.rawFiducials.length != 0;
+    }
+
+    public static NetworkTable getLimelightNTTable(String tableName) {
+        return NetworkTableInstance.getDefault().getTable(sanitizeName(tableName));
+    }
+
+    public static void Flush() {
+        NetworkTableInstance.getDefault().flush();
+    }
+
+    public static NetworkTableEntry getLimelightNTTableEntry(String tableName, String entryName) {
+        return getLimelightNTTable(tableName).getEntry(entryName);
+    }
+
+    public static DoubleArrayEntry getLimelightDoubleArrayEntry(String tableName, String entryName) {
+        String key = tableName + "/" + entryName;
+        return doubleArrayEntries.computeIfAbsent(key, k -> {
+            NetworkTable table = getLimelightNTTable(tableName);
+            return table.getDoubleArrayTopic(entryName).getEntry(new double[0]);
+        });
+    }
+    
+    public static double getLimelightNTDouble(String tableName, String entryName) {
+        return getLimelightNTTableEntry(tableName, entryName).getDouble(0.0);
+    }
+
+    public static void setLimelightNTDouble(String tableName, String entryName, double val) {
+        getLimelightNTTableEntry(tableName, entryName).setDouble(val);
+    }
+
+    public static void setLimelightNTDoubleArray(String tableName, String entryName, double[] val) {
+        getLimelightNTTableEntry(tableName, entryName).setDoubleArray(val);
+    }
+
+    public static double[] getLimelightNTDoubleArray(String tableName, String entryName) {
+        return getLimelightNTTableEntry(tableName, entryName).getDoubleArray(new double[0]);
+    }
+
+
+    public static String getLimelightNTString(String tableName, String entryName) {
+        return getLimelightNTTableEntry(tableName, entryName).getString("");
+    }
+
+    public static String[] getLimelightNTStringArray(String tableName, String entryName) {
+        return getLimelightNTTableEntry(tableName, entryName).getStringArray(new String[0]);
+    }
+
+
+    /////
+
+    /**
+     * Does the Limelight have a valid target?
+     * @param limelightName Name of the Limelight camera ("" for default)
+     * @return True if a valid target is present, false otherwise
+     */
+    public static boolean getTV(String limelightName) {
+        return 1.0 == getLimelightNTDouble(limelightName, "tv");
+    }
+
+    /**
+     * Gets the horizontal offset from the crosshair to the target in degrees.
+     * @param limelightName Name of the Limelight camera ("" for default)
+     * @return Horizontal offset angle in degrees
+     */
+    public static double getTX(String limelightName) {
+        return getLimelightNTDouble(limelightName, "tx");
+    }
+
+    /**
+     * Gets the vertical offset from the crosshair to the target in degrees.
+     * @param limelightName Name of the Limelight camera ("" for default)
+     * @return Vertical offset angle in degrees
+     */
+    public static double getTY(String limelightName) {
+        return getLimelightNTDouble(limelightName, "ty");
+    }
+
+    /**
+     * Gets the horizontal offset from the principal pixel/point to the target in degrees.  This is the most accurate 2d metric if you are using a calibrated camera and you don't need adjustable crosshair functionality.
+     * @param limelightName Name of the Limelight camera ("" for default)
+     * @return Horizontal offset angle in degrees
+     */
+    public static double getTXNC(String limelightName) {
+        return getLimelightNTDouble(limelightName, "txnc");
+    }
+
+    /**
+     * Gets the vertical offset from the principal pixel/point to the target in degrees. This is the most accurate 2d metric if you are using a calibrated camera and you don't need adjustable crosshair functionality.
+     * @param limelightName Name of the Limelight camera ("" for default)
+     * @return Vertical offset angle in degrees
+     */
+    public static double getTYNC(String limelightName) {
+        return getLimelightNTDouble(limelightName, "tync");
+    }
+
+    /**
+     * Gets the target area as a percentage of the image (0-100%).
+     * @param limelightName Name of the Limelight camera ("" for default) 
+     * @return Target area percentage (0-100)
+     */
+    public static double getTA(String limelightName) {
+        return getLimelightNTDouble(limelightName, "ta");
+    }
+
+    /**
+     * T2D is an array that contains several targeting metrcis
+     * @param limelightName Name of the Limelight camera
+     * @return Array containing  [targetValid, targetCount, targetLatency, captureLatency, tx, ty, txnc, tync, ta, tid, targetClassIndexDetector, 
+     * targetClassIndexClassifier, targetLongSidePixels, targetShortSidePixels, targetHorizontalExtentPixels, targetVerticalExtentPixels, targetSkewDegrees]
+     */
+    public static double[] getT2DArray(String limelightName) {
+        return getLimelightNTDoubleArray(limelightName, "t2d");
+    }
+    
+    /**
+     * Gets the number of targets currently detected.
+     * @param limelightName Name of the Limelight camera
+     * @return Number of detected targets
+     */
+    public static int getTargetCount(String limelightName) {
+      double[] t2d = getT2DArray(limelightName);
+      if(t2d.length == 17)
+      {
+        return (int)t2d[1];
+      }
+      return 0;
+    }
+
+    /**
+     * Gets the classifier class index from the currently running neural classifier pipeline
+     * @param limelightName Name of the Limelight camera
+     * @return Class index from classifier pipeline
+     */
+    public static int getClassifierClassIndex (String limelightName) {
+    double[] t2d = getT2DArray(limelightName);
+      if(t2d.length == 17)
+      {
+        return (int)t2d[11];
+      }
+      return 0;
+    }
+
+    /**
+     * Gets the detector class index from the primary result of the currently running neural detector pipeline.
+     * @param limelightName Name of the Limelight camera
+     * @return Class index from detector pipeline
+     */
+    public static int getDetectorClassIndex (String limelightName) {
+     double[] t2d = getT2DArray(limelightName);
+      if(t2d.length == 17)
+      {
+        return (int)t2d[10];
+      }
+      return 0;
+    }
+
+    /**
+     * Gets the current neural classifier result class name.
+     * @param limelightName Name of the Limelight camera
+     * @return Class name string from classifier pipeline
+     */
+    public static String getClassifierClass (String limelightName) {
+        return getLimelightNTString(limelightName, "tcclass");
+    }
+
+    /**
+     * Gets the primary neural detector result class name.
+     * @param limelightName Name of the Limelight camera
+     * @return Class name string from detector pipeline
+     */
+    public static String getDetectorClass (String limelightName) {
+        return getLimelightNTString(limelightName, "tdclass");
+    }
+
+    /**
+     * Gets the pipeline's processing latency contribution.
+     * @param limelightName Name of the Limelight camera
+     * @return Pipeline latency in milliseconds
+     */
+    public static double getLatency_Pipeline(String limelightName) {
+        return getLimelightNTDouble(limelightName, "tl");
+    }
+
+    /**
+     * Gets the capture latency.
+     * @param limelightName Name of the Limelight camera
+     * @return Capture latency in milliseconds
+     */
+    public static double getLatency_Capture(String limelightName) {
+        return getLimelightNTDouble(limelightName, "cl");
+    }
+
+    /**
+     * Gets the active pipeline index.
+     * @param limelightName Name of the Limelight camera
+     * @return Current pipeline index (0-9)
+     */
+    public static double getCurrentPipelineIndex(String limelightName) {
+        return getLimelightNTDouble(limelightName, "getpipe");
+    }
+
+    /**
+     * Gets the current pipeline type.
+     * @param limelightName Name of the Limelight camera
+     * @return Pipeline type string (e.g. "retro", "apriltag", etc)
+     */
+    public static String getCurrentPipelineType(String limelightName) {
+        return getLimelightNTString(limelightName, "getpipetype");
+    }
+
+    /**
+     * Gets the full JSON results dump.
+     * @param limelightName Name of the Limelight camera
+     * @return JSON string containing all current results
+     */
+    public static String getJSONDump(String limelightName) {
+        return getLimelightNTString(limelightName, "json");
+    }
+
+    /**
+     * Switch to getBotPose
+     * 
+     * @param limelightName
+     * @return
+     */
+    @Deprecated
+    public static double[] getBotpose(String limelightName) {
+        return getLimelightNTDoubleArray(limelightName, "botpose");
+    }
+
+    /**
+     * Switch to getBotPose_wpiRed
+     * 
+     * @param limelightName
+     * @return
+     */
+    @Deprecated
+    public static double[] getBotpose_wpiRed(String limelightName) {
+        return getLimelightNTDoubleArray(limelightName, "botpose_wpired");
+    }
+
+    /**
+     * Switch to getBotPose_wpiBlue
+     * 
+     * @param limelightName
+     * @return
+     */
+    @Deprecated
+    public static double[] getBotpose_wpiBlue(String limelightName) {
+        return getLimelightNTDoubleArray(limelightName, "botpose_wpiblue");
+    }
+
+    public static double[] getBotPose(String limelightName) {
+        return getLimelightNTDoubleArray(limelightName, "botpose");
+    }
+
+    public static double[] getBotPose_wpiRed(String limelightName) {
+        return getLimelightNTDoubleArray(limelightName, "botpose_wpired");
+    }
+
+    public static double[] getBotPose_wpiBlue(String limelightName) {
+        return getLimelightNTDoubleArray(limelightName, "botpose_wpiblue");
+    }
+
+    public static double[] getBotPose_TargetSpace(String limelightName) {
+        return getLimelightNTDoubleArray(limelightName, "botpose_targetspace");
+    }
+
+    public static double[] getCameraPose_TargetSpace(String limelightName) {
+        return getLimelightNTDoubleArray(limelightName, "camerapose_targetspace");
+    }
+
+    public static double[] getTargetPose_CameraSpace(String limelightName) {
+        return getLimelightNTDoubleArray(limelightName, "targetpose_cameraspace");
+    }
+
+    public static double[] getTargetPose_RobotSpace(String limelightName) {
+        return getLimelightNTDoubleArray(limelightName, "targetpose_robotspace");
+    }
+
+    /**
+     * Gets the average color under the crosshair region as a 3-element array.
+     * @param limelightName Name of the Limelight camera
+     * @return Array containing [Blue, Green, Red] color values (BGR order)
+     */
+    public static double[] getTargetColor(String limelightName) {
+        return getLimelightNTDoubleArray(limelightName, "tc");
+    }
+
+    public static double getFiducialID(String limelightName) {
+        return getLimelightNTDouble(limelightName, "tid");
+    }
+
+    /**
+     * Gets the Limelight heartbeat value. Increments once per frame, allowing you to detect if the Limelight is connected and alive.
+     * @param limelightName Name of the Limelight camera
+     * @return Heartbeat value that increments each frame
+     */
+    public static double getHeartbeat(String limelightName) {
+        return getLimelightNTDouble(limelightName, "hb");
+    }
+
+    public static String getNeuralClassID(String limelightName) {
+        return getLimelightNTString(limelightName, "tclass");
+    }
+
+    public static String[] getRawBarcodeData(String limelightName) {
+        return getLimelightNTStringArray(limelightName, "rawbarcodes");
+    }
+
+    /////
+    /////
+
+    public static Pose3d getBotPose3d(String limelightName) {
+        double[] poseArray = getLimelightNTDoubleArray(limelightName, "botpose");
+        return toPose3D(poseArray);
+    }
+
+    /**
+     * (Not Recommended) Gets the robot's 3D pose in the WPILib Red Alliance Coordinate System.
+     * @param limelightName Name/identifier of the Limelight
+     * @return Pose3d object representing the robot's position and orientation in Red Alliance field space
+     */
+    public static Pose3d getBotPose3d_wpiRed(String limelightName) {
+        double[] poseArray = getLimelightNTDoubleArray(limelightName, "botpose_wpired");
+        return toPose3D(poseArray);
+    }
+
+    /**
+     * (Recommended) Gets the robot's 3D pose in the WPILib Blue Alliance Coordinate System.
+     * @param limelightName Name/identifier of the Limelight
+     * @return Pose3d object representing the robot's position and orientation in Blue Alliance field space
+     */
+    public static Pose3d getBotPose3d_wpiBlue(String limelightName) {
+        double[] poseArray = getLimelightNTDoubleArray(limelightName, "botpose_wpiblue");
+        return toPose3D(poseArray);
+    }
+
+    /**
+     * Gets the robot's 3D pose with respect to the currently tracked target's coordinate system.
+     * @param limelightName Name/identifier of the Limelight
+     * @return Pose3d object representing the robot's position and orientation relative to the target
+     */
+    public static Pose3d getBotPose3d_TargetSpace(String limelightName) {
+        double[] poseArray = getLimelightNTDoubleArray(limelightName, "botpose_targetspace");
+        return toPose3D(poseArray);
+    }
+
+    /**
+     * Gets the camera's 3D pose with respect to the currently tracked target's coordinate system.
+     * @param limelightName Name/identifier of the Limelight
+     * @return Pose3d object representing the camera's position and orientation relative to the target
+     */
+    public static Pose3d getCameraPose3d_TargetSpace(String limelightName) {
+        double[] poseArray = getLimelightNTDoubleArray(limelightName, "camerapose_targetspace");
+        return toPose3D(poseArray);
+    }
+
+    /**
+     * Gets the target's 3D pose with respect to the camera's coordinate system.
+     * @param limelightName Name/identifier of the Limelight
+     * @return Pose3d object representing the target's position and orientation relative to the camera
+     */
+    public static Pose3d getTargetPose3d_CameraSpace(String limelightName) {
+        double[] poseArray = getLimelightNTDoubleArray(limelightName, "targetpose_cameraspace");
+        return toPose3D(poseArray);
+    }
+
+    /**
+     * Gets the target's 3D pose with respect to the robot's coordinate system.
+     * @param limelightName Name/identifier of the Limelight
+     * @return Pose3d object representing the target's position and orientation relative to the robot
+     */
+    public static Pose3d getTargetPose3d_RobotSpace(String limelightName) {
+        double[] poseArray = getLimelightNTDoubleArray(limelightName, "targetpose_robotspace");
+        return toPose3D(poseArray);
+    }
+
+    /**
+     * Gets the camera's 3D pose with respect to the robot's coordinate system.
+     * @param limelightName Name/identifier of the Limelight
+     * @return Pose3d object representing the camera's position and orientation relative to the robot
+     */
+    public static Pose3d getCameraPose3d_RobotSpace(String limelightName) {
+        double[] poseArray = getLimelightNTDoubleArray(limelightName, "camerapose_robotspace");
+        return toPose3D(poseArray);
+    }
+
+    /**
+     * Gets the Pose2d for easy use with Odometry vision pose estimator
+     * (addVisionMeasurement)
+     * 
+     * @param limelightName
+     * @return
+     */
+    public static Pose2d getBotPose2d_wpiBlue(String limelightName) {
+
+        double[] result = getBotPose_wpiBlue(limelightName);
+        return toPose2D(result);
+    }
+
+    /**
+     * Gets the MegaTag1 Pose2d and timestamp for use with WPILib pose estimator (addVisionMeasurement) in the WPILib Blue alliance coordinate system.
+     * 
+     * @param limelightName
+     * @return
+     */
+    public static PoseEstimate getBotPoseEstimate_wpiBlue(String limelightName) {
+        return getBotPoseEstimate(limelightName, "botpose_wpiblue", false);
+    }
+
+    /**
+     * Gets the MegaTag2 Pose2d and timestamp for use with WPILib pose estimator (addVisionMeasurement) in the WPILib Blue alliance coordinate system.
+     * Make sure you are calling setRobotOrientation() before calling this method.
+     * 
+     * @param limelightName
+     * @return
+     */
+    public static PoseEstimate getBotPoseEstimate_wpiBlue_MegaTag2(String limelightName) {
+        return getBotPoseEstimate(limelightName, "botpose_orb_wpiblue", true);
+    }
+
+    /**
+     * Gets the Pose2d for easy use with Odometry vision pose estimator
+     * (addVisionMeasurement)
+     * 
+     * @param limelightName
+     * @return
+     */
+    public static Pose2d getBotPose2d_wpiRed(String limelightName) {
+
+        double[] result = getBotPose_wpiRed(limelightName);
+        return toPose2D(result);
+
+    }
+
+    /**
+     * Gets the Pose2d and timestamp for use with WPILib pose estimator (addVisionMeasurement) when you are on the RED
+     * alliance
+     * @param limelightName
+     * @return
+     */
+    public static PoseEstimate getBotPoseEstimate_wpiRed(String limelightName) {
+        return getBotPoseEstimate(limelightName, "botpose_wpired", false);
+    }
+
+    /**
+     * Gets the Pose2d and timestamp for use with WPILib pose estimator (addVisionMeasurement) when you are on the RED
+     * alliance
+     * @param limelightName
+     * @return
+     */
+    public static PoseEstimate getBotPoseEstimate_wpiRed_MegaTag2(String limelightName) {
+        return getBotPoseEstimate(limelightName, "botpose_orb_wpired", true);
+    }
+
+    /**
+     * Gets the Pose2d for easy use with Odometry vision pose estimator
+     * (addVisionMeasurement)
+     * 
+     * @param limelightName
+     * @return
+     */
+    public static Pose2d getBotPose2d(String limelightName) {
+
+        double[] result = getBotPose(limelightName);
+        return toPose2D(result);
+
+    }
+   
+    /**
+     * Gets the current IMU data from NetworkTables.
+     * IMU data is formatted as [robotYaw, Roll, Pitch, Yaw, gyroX, gyroY, gyroZ, accelX, accelY, accelZ].
+     * Returns all zeros if data is invalid or unavailable.
+     * 
+     * @param limelightName Name/identifier of the Limelight
+     * @return IMUData object containing all current IMU data
+     */
+    public static IMUData getIMUData(String limelightName) {
+        double[] imuData = getLimelightNTDoubleArray(limelightName, "imu");
+        if (imuData == null || imuData.length < 10) {
+            return new IMUData();  // Returns object with all zeros
+        }
+        return new IMUData(imuData);
+    }
+
+    /////
+    /////
+
+    public static void setPipelineIndex(String limelightName, int pipelineIndex) {
+        setLimelightNTDouble(limelightName, "pipeline", pipelineIndex);
+    }
+
+    
+    public static void setPriorityTagID(String limelightName, int ID) {
+        setLimelightNTDouble(limelightName, "priorityid", ID);
+    }
+
+    /**
+     * Sets LED mode to be controlled by the current pipeline.
+     * @param limelightName Name of the Limelight camera
+     */
+    public static void setLEDMode_PipelineControl(String limelightName) {
+        setLimelightNTDouble(limelightName, "ledMode", 0);
+    }
+
+    public static void setLEDMode_ForceOff(String limelightName) {
+        setLimelightNTDouble(limelightName, "ledMode", 1);
+    }
+
+    public static void setLEDMode_ForceBlink(String limelightName) {
+        setLimelightNTDouble(limelightName, "ledMode", 2);
+    }
+
+    public static void setLEDMode_ForceOn(String limelightName) {
+        setLimelightNTDouble(limelightName, "ledMode", 3);
+    }
+
+    /**
+     * Enables standard side-by-side stream mode.
+     * @param limelightName Name of the Limelight camera
+     */
+    public static void setStreamMode_Standard(String limelightName) {
+        setLimelightNTDouble(limelightName, "stream", 0);
+    }
+
+    /**
+     * Enables Picture-in-Picture mode with secondary stream in the corner.
+     * @param limelightName Name of the Limelight camera
+     */
+    public static void setStreamMode_PiPMain(String limelightName) {
+        setLimelightNTDouble(limelightName, "stream", 1);
+    }
+
+    /**
+     * Enables Picture-in-Picture mode with primary stream in the corner.
+     * @param limelightName Name of the Limelight camera
+     */
+    public static void setStreamMode_PiPSecondary(String limelightName) {
+        setLimelightNTDouble(limelightName, "stream", 2);
+    }
+
+
+    /**
+     * Sets the crop window for the camera. The crop window in the UI must be completely open.
+     * @param limelightName Name of the Limelight camera
+     * @param cropXMin Minimum X value (-1 to 1)
+     * @param cropXMax Maximum X value (-1 to 1)
+     * @param cropYMin Minimum Y value (-1 to 1)
+     * @param cropYMax Maximum Y value (-1 to 1)
+     */
+    public static void setCropWindow(String limelightName, double cropXMin, double cropXMax, double cropYMin, double cropYMax) {
+        double[] entries = new double[4];
+        entries[0] = cropXMin;
+        entries[1] = cropXMax;
+        entries[2] = cropYMin;
+        entries[3] = cropYMax;
+        setLimelightNTDoubleArray(limelightName, "crop", entries);
+    }
+
+    /**
+     * Sets the keystone modification for the crop window.
+     * @param limelightName Name of the Limelight camera
+     * @param horizontal Horizontal keystone value (-0.95 to 0.95)
+     * @param vertical Vertical keystone value (-0.95 to 0.95)
+     */
+    public static void setKeystone(String limelightName, double horizontal, double vertical) {
+        double[] entries = new double[2];
+        entries[0] = horizontal;
+        entries[1] = vertical;
+        setLimelightNTDoubleArray(limelightName, "keystone_set", entries);
+    }
+
+    /**
+     * Sets 3D offset point for easy 3D targeting.
+     */
+    public static void setFiducial3DOffset(String limelightName, double offsetX, double offsetY, double offsetZ) {
+        double[] entries = new double[3];
+        entries[0] = offsetX;
+        entries[1] = offsetY;
+        entries[2] = offsetZ;
+        setLimelightNTDoubleArray(limelightName, "fiducial_offset_set", entries);
+    }
+
+    /**
+     * Sets robot orientation values used by MegaTag2 localization algorithm.
+     * 
+     * @param limelightName Name/identifier of the Limelight
+     * @param yaw Robot yaw in degrees. 0 = robot facing red alliance wall in FRC
+     * @param yawRate (Unnecessary) Angular velocity of robot yaw in degrees per second
+     * @param pitch (Unnecessary) Robot pitch in degrees 
+     * @param pitchRate (Unnecessary) Angular velocity of robot pitch in degrees per second
+     * @param roll (Unnecessary) Robot roll in degrees
+     * @param rollRate (Unnecessary) Angular velocity of robot roll in degrees per second
+     */
+    public static void SetRobotOrientation(String limelightName, double yaw, double yawRate, 
+        double pitch, double pitchRate, 
+        double roll, double rollRate) {
+        SetRobotOrientation_INTERNAL(limelightName, yaw, yawRate, pitch, pitchRate, roll, rollRate, true);
+    }
+
+    public static void SetRobotOrientation_NoFlush(String limelightName, double yaw, double yawRate, 
+        double pitch, double pitchRate, 
+        double roll, double rollRate) {
+        SetRobotOrientation_INTERNAL(limelightName, yaw, yawRate, pitch, pitchRate, roll, rollRate, false);
+    }
+
+    private static void SetRobotOrientation_INTERNAL(String limelightName, double yaw, double yawRate, 
+        double pitch, double pitchRate, 
+        double roll, double rollRate, boolean flush) {
+
+        double[] entries = new double[6];
+        entries[0] = yaw;
+        entries[1] = yawRate;
+        entries[2] = pitch;
+        entries[3] = pitchRate;
+        entries[4] = roll;
+        entries[5] = rollRate;
+        setLimelightNTDoubleArray(limelightName, "robot_orientation_set", entries);
+        if(flush)
+        {
+            Flush();
+        }
+    }
+   
+    /**
+     * Configures the IMU mode for MegaTag2 Localization
+     * 
+     * @param limelightName Name/identifier of the Limelight
+     * @param mode IMU mode.
+     */
+    public static void SetIMUMode(String limelightName, int mode) {
+        setLimelightNTDouble(limelightName, "imumode_set", mode);
+    }
+
+    /**
+     * Configures the complementary filter alpha value for IMU Assist Modes (Modes 3 and 4)
+     * 
+     * @param limelightName Name/identifier of the Limelight
+     * @param alpha Defaults to .001. Higher values will cause the internal IMU to converge onto the assist source more rapidly.
+     */
+    public static void SetIMUAssistAlpha(String limelightName, double alpha) {
+        setLimelightNTDouble(limelightName, "imuassistalpha_set", alpha);
+    }
+
+    
+    /**
+     * Configures the throttle value. Set to 100-200 while disabled to reduce thermal output/temperature.
+     * 
+     * @param limelightName Name/identifier of the Limelight
+     * @param throttle Defaults to 0. Your Limelgiht will process one frame after skipping <throttle> frames.
+     */
+    public static void SetThrottle(String limelightName, int throttle) {
+        setLimelightNTDouble(limelightName, "throttle_set", throttle);
+    }
+
+    /**
+     * Overrides the valid AprilTag IDs that will be used for localization.
+     * Tags not in this list will be ignored for robot pose estimation.
+     *
+     * @param limelightName Name/identifier of the Limelight
+     * @param validIDs Array of valid AprilTag IDs to track
+     */
+    public static void SetFiducialIDFiltersOverride(String limelightName, int[] validIDs) {
+        double[] validIDsDouble = new double[validIDs.length];
+        for (int i = 0; i < validIDs.length; i++) {
+            validIDsDouble[i] = validIDs[i];
+        }        
+        setLimelightNTDoubleArray(limelightName, "fiducial_id_filters_set", validIDsDouble);
+    }
+
+    /**
+     * Sets the downscaling factor for AprilTag detection.
+     * Increasing downscale can improve performance at the cost of potentially reduced detection range.
+     * 
+     * @param limelightName Name/identifier of the Limelight
+     * @param downscale Downscale factor. Valid values: 1.0 (no downscale), 1.5, 2.0, 3.0, 4.0. Set to 0 for pipeline control.
+     */
+    public static void SetFiducialDownscalingOverride(String limelightName, float downscale) 
+    {
+        int d = 0; // pipeline
+        if (downscale == 1.0)
+        {
+            d = 1;
+        }
+        if (downscale == 1.5)
+        {
+            d = 2;
+        }
+        if (downscale == 2)
+        {
+            d = 3;
+        }
+        if (downscale == 3)
+        {
+            d = 4;
+        }
+        if (downscale == 4)
+        {
+            d = 5;
+        }
+        setLimelightNTDouble(limelightName, "fiducial_downscale_set", d);
+    }
+    
+    /**
+     * Sets the camera pose relative to the robot.
+     * @param limelightName Name of the Limelight camera
+     * @param forward Forward offset in meters
+     * @param side Side offset in meters
+     * @param up Up offset in meters
+     * @param roll Roll angle in degrees
+     * @param pitch Pitch angle in degrees
+     * @param yaw Yaw angle in degrees
+     */
+    public static void setCameraPose_RobotSpace(String limelightName, double forward, double side, double up, double roll, double pitch, double yaw) {
+        double[] entries = new double[6];
+        entries[0] = forward;
+        entries[1] = side;
+        entries[2] = up;
+        entries[3] = roll;
+        entries[4] = pitch;
+        entries[5] = yaw;
+        setLimelightNTDoubleArray(limelightName, "camerapose_robotspace_set", entries);
+    }
+
+    /////
+    /////
+
+    public static void setPythonScriptData(String limelightName, double[] outgoingPythonData) {
+        setLimelightNTDoubleArray(limelightName, "llrobot", outgoingPythonData);
+    }
+
+    public static double[] getPythonScriptData(String limelightName) {
+        return getLimelightNTDoubleArray(limelightName, "llpython");
+    }
+
+    /////
+    /////
+
+    /**
+     * Triggers a snapshot capture via NetworkTables by incrementing the snapshot counter.
+     * Rate-limited to once per 10 frames on the Limelight.
+     * @param limelightName Name of the Limelight camera
+     */
+    public static void triggerSnapshot(String limelightName) {
+        double current = getLimelightNTDouble(limelightName, "snapshot");
+        setLimelightNTDouble(limelightName, "snapshot", current + 1);
+    }
+
+    /**
+     * Enables or pauses the rewind buffer recording.
+     * @param limelightName Name of the Limelight camera
+     * @param enabled True to enable recording, false to pause
+     */
+    public static void setRewindEnabled(String limelightName, boolean enabled) {
+        setLimelightNTDouble(limelightName, "rewind_enable_set", enabled ? 1 : 0);
+    }
+
+    /**
+     * Triggers a rewind capture with the specified duration.
+     * Maximum duration is 165 seconds. Rate-limited on the Limelight.
+     * @param limelightName Name of the Limelight camera
+     * @param durationSeconds Duration of rewind capture in seconds (max 165)
+     */
+    public static void triggerRewindCapture(String limelightName, double durationSeconds) {
+        double[] currentArray = getLimelightNTDoubleArray(limelightName, "capture_rewind");
+        double counter = (currentArray.length > 0) ? currentArray[0] : 0;
+        double[] entries = new double[2];
+        entries[0] = counter + 1;
+        entries[1] = Math.min(durationSeconds, 165);
+        setLimelightNTDoubleArray(limelightName, "capture_rewind", entries);
+    }
+
+    /**
+     * Gets the latest JSON results output and returns a LimelightResults object.
+     * @param limelightName Name of the Limelight camera
+     * @return LimelightResults object containing all current target data
+     */
+    public static LimelightResults getLatestResults(String limelightName) {
+
+        long start = System.nanoTime();
+        LimelightHelpers.LimelightResults results = new LimelightHelpers.LimelightResults();
+        if (mapper == null) {
+            mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        }
+
+        try {
+            String jsonString = getJSONDump(limelightName);
+            if (jsonString == null || jsonString.isEmpty() || jsonString.isBlank()) {
+                results.error = "lljson error: empty json";
+            } else {
+                results = mapper.readValue(jsonString, LimelightResults.class);
+                if (results.imuResults != null) {
+                    results.imuResults.parseDataArray();
+                }
+            }
+        } catch (JsonProcessingException e) {
+            results.error = "lljson error: " + e.getMessage();
+        }
+
+        long end = System.nanoTime();
+        double millis = (end - start) * .000001;
+        results.latency_jsonParse = millis;
+        if (profileJSON) {
+            System.out.printf("lljson: %.2f\r\n", millis);
+        }
+
+        return results;
+    }
+
+    /**
+     * Sets up port forwarding for a Limelight 3A/3G connected via USB.
+     * This allows access to the Limelight web interface and video stream
+     * when connected to the robot over USB.
+     *
+     * For usbIndex 0: ports 5800-5809 forward to 172.29.0.1
+     * For usbIndex 1: ports 5810-5819 forward to 172.29.1.1
+     * etc.
+     *
+     * Call this method once during robot initialization.
+     * To access the interface of the camera with usbIndex0, you would go to roboRIO-(teamnum)-FRC.local:5801. Port 5811 for usb index 1
+     *
+     * @param usbIndex The USB index of the Limelight (0, 1, 2, etc.)
+     */
+    public static void setupPortForwardingUSB(int usbIndex) {
+        String ip = "172.29." + usbIndex + ".1";
+        int basePort = 5800 + (usbIndex * 10);
+
+        for (int i = 0; i < 10; i++) {
+            PortForwarder.add(basePort + i, ip, 5800 + i);
+        }
+    }
+}
+</file>
+
+<file path=".wpilib/wpilib_preferences.json">
+{
+    "enableCppIntellisense": false,
+    "currentLanguage": "java",
+    "projectYear": "2026",
+    "teamNumber": 12100
+}
+</file>
+
+<file path="gradle/wrapper/gradle-wrapper.properties">
+distributionBase=GRADLE_USER_HOME
+distributionPath=permwrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.11-bin.zip
+networkTimeout=10000
+validateDistributionUrl=true
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=permwrapper/dists
+</file>
+
+<file path="src/main/deploy/example.txt">
+Files placed in this directory will be deployed to the RoboRIO into the
+'deploy' directory in the home folder. Use the 'Filesystem.getDeployDirectory' wpilib function
+to get a proper path relative to the deploy directory.
+</file>
+
+<file path="src/main/java/frc/robot/subsystems/CommandSwerveDrivetrain.java">
+package frc.robot.subsystems;
+
+import static edu.wpi.first.units.Units.*;
+
+import java.util.Optional;
+import java.util.function.Supplier;
+
+import com.ctre.phoenix6.SignalLogger;
+import com.ctre.phoenix6.Utils;
+import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
+import com.ctre.phoenix6.swerve.SwerveModuleConstants;
+import com.ctre.phoenix6.swerve.SwerveRequest;
+
+import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.numbers.N1;
+import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.Notifier;
+import edu.wpi.first.wpilibj.RobotController;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Subsystem;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+
+import frc.robot.Constants.VisionConstants;
+import frc.robot.LimelightHelpers;
+import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
+
+/**
+ * Class that extends the Phoenix 6 SwerveDrivetrain class and implements
+ * Subsystem so it can easily be used in command-based projects.
+ *
+ * Generated by the 2026 Tuner X Swerve Project Generator
+ * https://v6.docs.ctr-electronics.com/en/stable/docs/tuner/tuner-swerve/index.html
+ */
+public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Subsystem {
+    private static final double kSimLoopPeriod = 0.004; // 4 ms
+    private Notifier m_simNotifier = null;
+    private double m_lastSimTime;
+
+    /* Blue alliance sees forward as 0 degrees (toward red alliance wall) */
+    private static final Rotation2d kBlueAlliancePerspectiveRotation = Rotation2d.kZero;
+    /* Red alliance sees forward as 180 degrees (toward blue alliance wall) */
+    private static final Rotation2d kRedAlliancePerspectiveRotation = Rotation2d.k180deg;
+    /* Keep track if we've ever applied the operator perspective before or not */
+    private boolean m_hasAppliedOperatorPerspective = false;
+
+    /* Swerve requests to apply during SysId characterization */
+    private final SwerveRequest.SysIdSwerveTranslation m_translationCharacterization = new SwerveRequest.SysIdSwerveTranslation();
+    private final SwerveRequest.SysIdSwerveSteerGains m_steerCharacterization = new SwerveRequest.SysIdSwerveSteerGains();
+    private final SwerveRequest.SysIdSwerveRotation m_rotationCharacterization = new SwerveRequest.SysIdSwerveRotation();
+
+    /* SysId routine for characterizing translation. This is used to find PID gains for the drive motors. */
+    private final SysIdRoutine m_sysIdRoutineTranslation = new SysIdRoutine(
+        new SysIdRoutine.Config(
+            null,        // Use default ramp rate (1 V/s)
+            Volts.of(4), // Reduce dynamic step voltage to 4 V to prevent brownout
+            null,        // Use default timeout (10 s)
+            // Log state with SignalLogger class
+            state -> SignalLogger.writeString("SysIdTranslation_State", state.toString())
+        ),
+        new SysIdRoutine.Mechanism(
+            output -> setControl(m_translationCharacterization.withVolts(output)),
+            null,
+            this
+        )
+    );
+
+    /* SysId routine for characterizing steer. This is used to find PID gains for the steer motors. */
+    private final SysIdRoutine m_sysIdRoutineSteer = new SysIdRoutine(
+        new SysIdRoutine.Config(
+            null,        // Use default ramp rate (1 V/s)
+            Volts.of(7), // Use dynamic voltage of 7 V
+            null,        // Use default timeout (10 s)
+            // Log state with SignalLogger class
+            state -> SignalLogger.writeString("SysIdSteer_State", state.toString())
+        ),
+        new SysIdRoutine.Mechanism(
+            volts -> setControl(m_steerCharacterization.withVolts(volts)),
+            null,
+            this
+        )
+    );
+
+    /*
+     * SysId routine for characterizing rotation.
+     * This is used to find PID gains for the FieldCentricFacingAngle Heading...[source](https://www.chiefdelphi.com/t/tuner-x-swerve-code-rotation-sysid-routine-questions/483845)is
+        )
+    );
+
+    /* The SysId routine to test */
+    private SysIdRoutine m_sysIdRoutineToApply = m_sysIdRoutineTranslation;
+
+    /**
+     * Constructs a CTRE SwerveDrivetrain using the specified constants.
+     *
+     * @param drivetrainConstants Drivetrain-wide constants for the swerve drive
+     * @param modules             Constants for each specific module
+     */
+    public CommandSwerveDrivetrain(
+        SwerveDrivetrainConstants drivetrainConstants,
+        SwerveModuleConstants<?, ?, ?>... modules
+    ) {
+        super(drivetrainConstants, modules);
+        if (Utils.isSimulation()) {
+            startSimThread();
+        }
+        configureLimelight();
+    }
+
+    /**
+     * Constructs a CTRE SwerveDrivetrain using the specified constants.
+     *
+     * @param drivetrainConstants     Drivetrain-wide constants for the swerve drive
+     * @param odometryUpdateFrequency The frequency to run the odometry loop.
+     * @param modules                 Constants for each specific module
+     */
+    public CommandSwerveDrivetrain(
+        SwerveDrivetrainConstants drivetrainConstants,
+        double odometryUpdateFrequency,
+        SwerveModuleConstants<?, ?, ?>... modules
+    ) {
+        super(drivetrainConstants, odometryUpdateFrequency, modules);
+        if (Utils.isSimulation()) {
+            startSimThread();
+        }
+        configureLimelight();
+    }
+
+    /**
+     * Constructs a CTRE SwerveDrivetrain using the specified constants.
+     *
+     * @param drivetrainConstants       Drivetrain-wide constants for the swerve drive
+     * @param odometryUpdateFrequency   The frequency to run the odometry loop.
+     * @param odometryStandardDeviation Standard deviations for odometry calculation
+     * @param visionStandardDeviation   Standard deviations for vision calculation
+     * @param modules                   Constants for each specific module
+     */
+    public CommandSwerveDrivetrain(
+        SwerveDrivetrainConstants drivetrainConstants,
+        double odometryUpdateFrequency,
+        Matrix<N3, N1> odometryStandardDeviation,
+        Matrix<N3, N1> visionStandardDeviation,
+        SwerveModuleConstants<?, ?, ?>... modules
+    ) {
+        super(drivetrainConstants, odometryUpdateFrequency, odometryStandardDeviation, visionStandardDeviation, modules);
+        if (Utils.isSimulation()) {
+            startSimThread();
+        }
+        configureLimelight();
+    }
+
+    /**
+     * Configura a pose da Limelight em relação ao centro do robô.
+     */
+    private void configureLimelight() {
+        LimelightHelpers.setCameraPose_RobotSpace(
+            VisionConstants.kLimelightName,
+            VisionConstants.kForwardMeters,
+            VisionConstants.kSideMeters,
+            VisionConstants.kUpMeters,
+            VisionConstants.kRollDegrees,
+            VisionConstants.kPitchDegrees,
+            VisionConstants.kYawDegrees
+        );
+    }
+
+    /**
+     * Returns a command that applies the specified control request to this swerve drivetrain.
+     *
+     * @param request Function returning the request to apply
+     * @return Command to run
+     */
+    public Command applyRequest(Supplier<SwerveRequest> request) {
+        return run(() -> this.setControl(request.get()));
+    }
+
+    /**
+     * Runs the SysId Quasistatic test in the given direction for the routine
+     * specified by {@link #m_sysIdRoutineToApply}.
+     *
+     * @param direction Direction of the SysId Quasistatic test
+     * @return Command to run
+     */
+    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
+        return m_sysIdRoutineToApply.quasistatic(direction);
+    }
+
+    /**
+     * Runs the SysId Dynamic test in the given direction for the routine
+     * specified by {@link #m_sysIdRoutineToApply}.
+     *
+     * @param direction Direction of the SysId Dynamic test
+     * @return Command to run
+     */
+    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
+        return m_sysIdRoutineToApply.dynamic(direction);
+    }
+
+    /**
+     * Retorna a posição (Pose2d) estimada atual do robô.
+     */
+    public Pose2d getPose() {
+        return this.getState().Pose;
+    }
+
+    @Override
+    public void periodic() {
+        /*
+         * Periodically try to apply the operator perspective.
+         */
+        if (!m_hasAppliedOperatorPerspective || DriverStation.isDisabled()) {
+            DriverStation.getAlliance().ifPresent(allianceColor -> {
+                setOperatorPerspectiveForward(
+                    allianceColor == Alliance.Red
+                        ? kRedAlliancePerspectiveRotation
+                        : kBlueAlliancePerspectiveRotation
+                );
+                m_hasAppliedOperatorPerspective = true;
+            });
+        }
+
+        /*
+         * Processa e funde as medições de visão da Limelight 4 via MegaTag 2
+         */
+        updateVisionMegaTag2();
+    }
+
+    private void updateVisionMegaTag2() {
+        double yawDegrees = this.getPigeon2().getYaw().getValueAsDouble();
+        double angularVelocityRps = this.getPigeon2().getAngularVelocityZWorld().getValueAsDouble();
+
+        // Alimenta o algoritmo MegaTag 2 com os dados de orientação e velocidade do Pigeon 2
+        LimelightHelpers.SetRobotOrientation(
+            VisionConstants.kLimelightName,
+            yawDegrees,
+            angularVelocityRps,
+            0, 0, 0, 0
+        );
+
+        // Obtém a estimativa de posição no mapa de campo (WPILib Blue Alliance)
+        LimelightHelpers.PoseEstimate visionEstimate = 
+            LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(VisionConstants.kLimelightName);
+
+        // Validação de segurança: aceita medições apenas se houver AprilTags visíveis e o robô não estiver girando muito rápido
+        if (visionEstimate != null && visionEstimate.tagCount > 0) {
+            if (Math.abs(angularVelocityRps) < 360.0) { // Descarte se a velocidade angular for maior que 360°/s
+                this.addVisionMeasurement(
+                    visionEstimate.pose,
+                    visionEstimate.timestampSeconds
+                );
+            }
+        }
+    }
+
+    private void startSimThread() {
+        m_lastSimTime = Utils.getCurrentTimeSeconds();
+
+        /* Run simulation at a faster rate so PID gains behave more reasonably */
+        m_simNotifier = new Notifier(() -> {
+            final double currentTime = Utils.getCurrentTimeSeconds();
+            double deltaTime = currentTime - m_lastSimTime;
+            m_lastSimTime = currentTime;
+
+            /* use the measured time delta, get battery voltage from WPILib */
+            updateSimState(deltaTime, RobotController.getBatteryVoltage());
+        });
+        m_simNotifier.startPeriodic(kSimLoopPeriod);
+    }
+
+    /**
+     * Adds a vision measurement to the Kalman Filter.
+     *
+     * @param visionRobotPoseMeters The pose of the robot as measured by the vision camera.
+     * @param timestampSeconds The timestamp of the vision measurement in seconds.
+     */
+    @Override
+    public void addVisionMeasurement(Pose2d visionRobotPoseMeters, double timestampSeconds) {
+        super.addVisionMeasurement(visionRobotPoseMeters, Utils.fpgaToCurrentTime(timestampSeconds));
+    }
+
+    /**
+     * Adds a vision measurement to the Kalman Filter.
+     *
+     * @param visionRobotPoseMeters The pose of the robot as measured by the vision camera.
+     * @param timestampSeconds The timestamp of the vision measurement in seconds.
+     * @param visionMeasurementStdDevs Standard deviations of the vision pose measurement
+     */
+    @Override
+    public void addVisionMeasurement(
+        Pose2d visionRobotPoseMeters,
+        double timestampSeconds,
+        Matrix<N3, N1> visionMeasurementStdDevs
+    ) {
+        super.addVisionMeasurement(visionRobotPoseMeters, Utils.fpgaToCurrentTime(timestampSeconds), visionMeasurementStdDevs);
+    }
+
+    /**
+     * Return the pose at a given timestamp, if the buffer is not empty.
+     *
+     * @param timestampSeconds The timestamp of the pose in seconds.
+     * @return The pose at the given timestamp (or Optional.empty() if the buffer is empty).
+     */
+    @Override
+    public Optional<Pose2d> samplePoseAt(double timestampSeconds) {
+        return super.samplePoseAt(Utils.fpgaToCurrentTime(timestampSeconds));
+    }
+}
+</file>
+
+<file path="src/main/java/frc/robot/Main.java">
+// Copyright (c) FIRST and other WPILib contributors.
+// Open Source Software; you can modify and/or share it under the terms of
+// the WPILib BSD license file in the root directory of this project.
+
+package frc.robot;
+
+import edu.wpi.first.wpilibj.RobotBase;
+
+public final class Main {
+  private Main() {}
+
+  public static void main(String... args) {
+    RobotBase.startRobot(Robot::new);
+  }
+}
+</file>
+
+<file path="src/main/java/frc/robot/Robot.java">
+// Copyright (c) FIRST and other WPILib contributors.
+// Open Source Software; you can modify and/or share it under the terms of
+// the WPILib BSD license file in the root directory of this project.
+
+package frc.robot;
+
+import com.ctre.phoenix6.HootAutoReplay;
+
+import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
+
+public class Robot extends TimedRobot {
+    private Command m_autonomousCommand;
+
+    private final RobotContainer m_robotContainer;
+
+    /* log and replay timestamp and joystick data */
+    private final HootAutoReplay m_timeAndJoystickReplay = new HootAutoReplay()
+        .withTimestampReplay()
+        .withJoystickReplay();
+
+    public Robot() {
+        m_robotContainer = new RobotContainer();
+    }
+
+    @Override
+    public void robotPeriodic() {
+        m_timeAndJoystickReplay.update();
+        CommandScheduler.getInstance().run(); 
+    }
+
+    @Override
+    public void disabledInit() {}
+
+    @Override
+    public void disabledPeriodic() {}
+
+    @Override
+    public void disabledExit() {}
+
+    @Override
+    public void autonomousInit() {
+        m_autonomousCommand = m_robotContainer.getAutonomousCommand();
+
+        if (m_autonomousCommand != null) {
+            CommandScheduler.getInstance().schedule(m_autonomousCommand);
+        }
+    }
+
+    @Override
+    public void autonomousPeriodic() {}
+
+    @Override
+    public void autonomousExit() {}
+
+    @Override
+    public void teleopInit() {
+        if (m_autonomousCommand != null) {
+            CommandScheduler.getInstance().cancel(m_autonomousCommand);
+
+            // Limelight
+            
+        }
+    }
+
+    @Override
+    public void teleopPeriodic() {}
+
+    @Override
+    public void teleopExit() {}
+
+    @Override
+    public void testInit() {
+        CommandScheduler.getInstance().cancelAll();
+    }
+
+    @Override
+    public void testPeriodic() {}
+
+    @Override
+    public void testExit() {}
+
+    @Override
+    public void simulationPeriodic() {}
+}
+</file>
+
+<file path="src/main/java/frc/robot/RobotContainer.java">
+// Copyright (c) FIRST and other WPILib contributors.
+// Open Source Software; you can modify and/or share it under the terms of
+// the WPILib BSD license file in the root directory of this project.
+
+package frc.robot;
+
+import static edu.wpi.first.units.Units.*;
+
+import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
+import com.ctre.phoenix6.swerve.SwerveRequest;
+
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj.RobotBase;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
+
+import frc.robot.Constants.RobotModeConstants;
+import frc.robot.Constants.ShooterConstants;
+import frc.robot.Constants.VisionConstants;
+import frc.robot.generated.TunerConstants;
+import frc.robot.subsystems.ArmSubsystem;
+import frc.robot.subsystems.CommandSwerveDrivetrain;
+import frc.robot.subsystems.ElevatorSubsystem;
+import frc.robot.subsystems.IntakeSubsystem;
+import frc.robot.subsystems.ShooterSubsystem;
+
+public class RobotContainer {
+    private double MaxSpeed = 1.0 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
+    private double MaxAngularRate = RotationsPerSecond.of(0.75).in(RadiansPerSecond);
+
+    /* Setting up bindings for necessary control of the swerve drive platform */
+    private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
+            .withDeadband(MaxSpeed * 0.1).withRotationalDeadband(MaxAngularRate * 0.1)
+            .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
+            
+    private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
+    private final SwerveRequest.PointWheelsAt point = new SwerveRequest.PointWheelsAt();
+
+    // Requisição de Mira com Deadband devidamente configurado
+    private final SwerveRequest.FieldCentricFacingAngle visionAim = new SwerveRequest.FieldCentricFacingAngle()
+            .withDeadband(MaxSpeed * 0.1)
+            .withRotationalDeadband(MaxAngularRate * 0.1)
+            .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
+
+    private final Telemetry logger = new Telemetry(MaxSpeed);
+
+    // Controles: Piloto (Porta 0) e Operador (Porta 1)
+    private final CommandXboxController joystick = new CommandXboxController(0);
+    private final CommandXboxController operatorController = new CommandXboxController(1);
+
+    public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
+
+    // Declaração dos Subsistemas dos Anexos
+    private IntakeSubsystem intakeSubsystem;
+    private ArmSubsystem armSubsystem;
+    private ElevatorSubsystem elevatorSubsystem;
+    private ShooterSubsystem shooterSubsystem;
+
+    public RobotContainer() {
+        // Configura os ganhos do PID do controlador de rotação do Swerve para a Limelight
+        visionAim.HeadingController.setPID(6.0, 0.0, 0.2);
+        visionAim.HeadingController.enableContinuousInput(-Math.PI, Math.PI);
+
+        // Inicializa os anexos se estiverem montados no robô físico OU se estiver rodando no simulador
+        if (RobotModeConstants.IS_ATTACHMENTS_MOUNTED || RobotBase.isSimulation()) {
+            intakeSubsystem = new IntakeSubsystem();
+            armSubsystem = new ArmSubsystem();
+            elevatorSubsystem = new ElevatorSubsystem();
+            shooterSubsystem = new ShooterSubsystem();
+        }
+
+        configureBindings();
+    }
+
+    private void configureBindings() {
+        drivetrain.setDefaultCommand(
+            drivetrain.applyRequest(() ->
+                drive.withVelocityX(-joystick.getLeftY() * MaxSpeed)
+                    .withVelocityY(-joystick.getLeftX() * MaxSpeed)
+                    .withRotationalRate(-joystick.getRightX() * MaxAngularRate)
+            )
+        );
+
+        final var idle = new SwerveRequest.Idle();
+        RobotModeTriggers.disabled().whileTrue(
+            drivetrain.applyRequest(() -> idle).ignoringDisable(true)
+        );
+
+        joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
+        joystick.b().whileTrue(drivetrain.applyRequest(() ->
+            point.withModuleDirection(new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))
+        ));
+
+
+        // ALINHAMENTO AUTOMÁTICO DE MIRA (Gatilho Direito do Piloto)
+
+joystick.rightTrigger().whileTrue(
+    drivetrain.applyRequest(() -> {
+        boolean hasTarget = LimelightHelpers.getTV(VisionConstants.kLimelightName);
+        double tx = LimelightHelpers.getTX(VisionConstants.kLimelightName);
+
+        if (hasTarget) {
+            // Se houver AprilTag visível, calcula o ângulo alvo somando o desvio 'tx'
+            Rotation2d targetHeading = drivetrain.getPose().getRotation().plus(Rotation2d.fromDegrees(-tx));
+
+            return visionAim
+                .withVelocityX(-joystick.getLeftY() * MaxSpeed)
+                .withVelocityY(-joystick.getLeftX() * MaxSpeed)
+                .withTargetDirection(targetHeading);
+        } else {
+            // Se NÃO houver AprilTag visível, mantém o controle de pilotagem manual normal
+            return drive
+                .withVelocityX(-joystick.getLeftY() * MaxSpeed)
+                .withVelocityY(-joystick.getLeftX() * MaxSpeed)
+                .withRotationalRate(-joystick.getRightX() * MaxAngularRate);
+        }
+    })
+);
+
+        // SysId routines
+        joystick.back().and(joystick.y()).whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
+        joystick.back().and(joystick.x()).whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
+        joystick.start().and(joystick.y()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kForward));
+        joystick.start().and(joystick.x()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kReverse));
+
+        // Reset do zero do campo
+        joystick.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
+
+        drivetrain.registerTelemetry(logger::telemeterize);
+
+        // ------------------------------------------------------------------------
+        // CONTROLES DO OPERADOR (Anexos)
+        // ------------------------------------------------------------------------
+        if (!RobotModeConstants.IS_ATTACHMENTS_MOUNTED && !RobotBase.isSimulation()) {
+            return;
+        }
+
+        operatorController.rightTrigger().whileTrue(intakeSubsystem.runIntakeCommand());
+        operatorController.leftBumper().whileTrue(intakeSubsystem.runEjectCommand());
+
+        operatorController.rightTrigger()
+            .onTrue(shooterSubsystem.spinUpCommand(ShooterConstants.kTargetRPS))
+            .onFalse(shooterSubsystem.stopCommand());
+
+        new Trigger(shooterSubsystem::isAtSpeed)
+            .and(operatorController.rightTrigger())
+            .whileTrue(intakeSubsystem.runIntakeCommand());
+
+        operatorController.a()
+            .onTrue(armSubsystem.setAngleCommand(Math.toRadians(15.0)))
+            .onTrue(elevatorSubsystem.setHeightCommand(0.1));
+
+        operatorController.y()
+            .onTrue(armSubsystem.setAngleCommand(Math.toRadians(90.0)))
+            .onTrue(elevatorSubsystem.setHeightCommand(1.2));
+    }
+    
+    public Command getAutonomousCommand() {
+        final var idle = new SwerveRequest.Idle();
+        return Commands.sequence(
+            drivetrain.runOnce(() -> drivetrain.seedFieldCentric(Rotation2d.kZero)),
+            drivetrain.applyRequest(() ->
+                drive.withVelocityX(0.5)
+                    .withVelocityY(0)
+                    .withRotationalRate(0)
+            )
+            .withTimeout(5.0),
+            drivetrain.applyRequest(() -> idle)
+        );
+    }
+}
+</file>
+
+<file path="src/main/java/frc/robot/Telemetry.java">
+package frc.robot;
+
+import com.ctre.phoenix6.SignalLogger;
+import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
+
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.kinematics.SwerveModulePosition;
+import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.networktables.DoubleArrayPublisher;
+import edu.wpi.first.networktables.DoublePublisher;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StringPublisher;
+import edu.wpi.first.networktables.StructArrayPublisher;
+import edu.wpi.first.networktables.StructPublisher;
+import edu.wpi.first.wpilibj.smartdashboard.Mechanism2d;
+import edu.wpi.first.wpilibj.smartdashboard.MechanismLigament2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.util.Color;
+import edu.wpi.first.wpilibj.util.Color8Bit;
+
+public class Telemetry {
+    private final double MaxSpeed;
+
+    /**
+     * Construct a telemetry object, with the specified max speed of the robot
+     * 
+     * @param maxSpeed Maximum speed in meters per second
+     */
+    public Telemetry(double maxSpeed) {
+        MaxSpeed = maxSpeed;
+        SignalLogger.start();
+
+        /* Set up the module state Mechanism2d telemetry */
+        for (int i = 0; i < 4; ++i) {
+            SmartDashboard.putData("Module " + i, m_moduleMechanisms[i]);
+        }
+    }
+
+    /* What to publish over networktables for telemetry */
+    private final NetworkTableInstance inst = NetworkTableInstance.getDefault();
+
+    /* Robot swerve drive state */
+    private final NetworkTable driveStateTable = inst.getTable("DriveState");
+    private final StructPublisher<Pose2d> drivePose = driveStateTable.getStructTopic("Pose", Pose2d.struct).publish();
+    private final StructPublisher<ChassisSpeeds> driveSpeeds = driveStateTable.getStructTopic("Speeds", ChassisSpeeds.struct).publish();
+    private final StructArrayPublisher<SwerveModuleState> driveModuleStates = driveStateTable.getStructArrayTopic("ModuleStates", SwerveModuleState.struct).publish();
+    private final StructArrayPublisher<SwerveModuleState> driveModuleTargets = driveStateTable.getStructArrayTopic("ModuleTargets", SwerveModuleState.struct).publish();
+    private final StructArrayPublisher<SwerveModulePosition> driveModulePositions = driveStateTable.getStructArrayTopic("ModulePositions", SwerveModulePosition.struct).publish();
+    private final DoublePublisher driveTimestamp = driveStateTable.getDoubleTopic("Timestamp").publish();
+    private final DoublePublisher driveOdometryFrequency = driveStateTable.getDoubleTopic("OdometryFrequency").publish();
+
+    /* Robot pose for field positioning */
+    private final NetworkTable table = inst.getTable("Pose");
+    private final DoubleArrayPublisher fieldPub = table.getDoubleArrayTopic("robotPose").publish();
+    private final StringPublisher fieldTypePub = table.getStringTopic(".type").publish();
+
+    /* Mechanisms to represent the swerve module states */
+    private final Mechanism2d[] m_moduleMechanisms = new Mechanism2d[] {
+        new Mechanism2d(1, 1),
+        new Mechanism2d(1, 1),
+        new Mechanism2d(1, 1),
+        new Mechanism2d(1, 1),
+    };
+    /* A direction and length changing ligament for speed representation */
+    private final MechanismLigament2d[] m_moduleSpeeds = new MechanismLigament2d[] {
+        m_moduleMechanisms[0].getRoot("RootSpeed", 0.5, 0.5).append(new MechanismLigament2d("Speed", 0.5, 0)),
+        m_moduleMechanisms[1].getRoot("RootSpeed", 0.5, 0.5).append(new MechanismLigament2d("Speed", 0.5, 0)),
+        m_moduleMechanisms[2].getRoot("RootSpeed", 0.5, 0.5).append(new MechanismLigament2d("Speed", 0.5, 0)),
+        m_moduleMechanisms[3].getRoot("RootSpeed", 0.5, 0.5).append(new MechanismLigament2d("Speed", 0.5, 0)),
+    };
+    /* A direction changing and length constant ligament for module direction */
+    private final MechanismLigament2d[] m_moduleDirections = new MechanismLigament2d[] {
+        m_moduleMechanisms[0].getRoot("RootDirection", 0.5, 0.5)
+            .append(new MechanismLigament2d("Direction", 0.1, 0, 0, new Color8Bit(Color.kWhite))),
+        m_moduleMechanisms[1].getRoot("RootDirection", 0.5, 0.5)
+            .append(new MechanismLigament2d("Direction", 0.1, 0, 0, new Color8Bit(Color.kWhite))),
+        m_moduleMechanisms[2].getRoot("RootDirection", 0.5, 0.5)
+            .append(new MechanismLigament2d("Direction", 0.1, 0, 0, new Color8Bit(Color.kWhite))),
+        m_moduleMechanisms[3].getRoot("RootDirection", 0.5, 0.5)
+            .append(new MechanismLigament2d("Direction", 0.1, 0, 0, new Color8Bit(Color.kWhite))),
+    };
+
+    private final double[] m_poseArray = new double[3];
+
+    /** Accept the swerve drive state and telemeterize it to SmartDashboard and SignalLogger. */
+    public void telemeterize(SwerveDriveState state) {
+        /* Telemeterize the swerve drive state */
+        drivePose.set(state.Pose);
+        driveSpeeds.set(state.Speeds);
+        driveModuleStates.set(state.ModuleStates);
+        driveModuleTargets.set(state.ModuleTargets);
+        driveModulePositions.set(state.ModulePositions);
+        driveTimestamp.set(state.Timestamp);
+        driveOdometryFrequency.set(1.0 / state.OdometryPeriod);
+
+        /* Also write to log file */
+        SignalLogger.writeStruct("DriveState/Pose", Pose2d.struct, state.Pose);
+        SignalLogger.writeStruct("DriveState/Speeds", ChassisSpeeds.struct, state.Speeds);
+        SignalLogger.writeStructArray("DriveState/ModuleStates", SwerveModuleState.struct, state.ModuleStates);
+        SignalLogger.writeStructArray("DriveState/ModuleTargets", SwerveModuleState.struct, state.ModuleTargets);
+        SignalLogger.writeStructArray("DriveState/ModulePositions", SwerveModulePosition.struct, state.ModulePositions);
+        SignalLogger.writeDouble("DriveState/OdometryPeriod", state.OdometryPeriod, "seconds");
+        SignalLogger.writeInteger("DriveState/FailedDaqs", state.FailedDaqs);
+
+        /* Telemeterize the pose to a Field2d */
+        fieldTypePub.set("Field2d");
+
+        m_poseArray[0] = state.Pose.getX();
+        m_poseArray[1] = state.Pose.getY();
+        m_poseArray[2] = state.Pose.getRotation().getDegrees();
+        fieldPub.set(m_poseArray);
+
+        /* Telemeterize each module state to a Mechanism2d */
+        for (int i = 0; i < 4; ++i) {
+            m_moduleSpeeds[i].setAngle(state.ModuleStates[i].angle);
+            m_moduleDirections[i].setAngle(state.ModuleStates[i].angle);
+            m_moduleSpeeds[i].setLength(state.ModuleStates[i].speedMetersPerSecond / (2 * MaxSpeed));
+        }
+    }
+}
+</file>
+
+<file path="vendordeps/Phoenix6-26.3.0.json">
+{
+    "fileName": "Phoenix6-26.3.0.json",
+    "name": "CTRE-Phoenix (v6)",
+    "version": "26.3.0",
+    "frcYear": "2026",
+    "uuid": "e995de00-2c64-4df5-8831-c1441420ff19",
+    "mavenUrls": [
+        "https://maven.ctr-electronics.com/release/"
+    ],
+    "jsonUrl": "https://maven.ctr-electronics.com/release/com/ctre/phoenix6/latest/Phoenix6-frc2026-latest.json",
+    "conflictsWith": [
+        {
+            "uuid": "e7900d8d-826f-4dca-a1ff-182f658e98af",
+            "errorMessage": "Users can not have both the replay and regular Phoenix 6 vendordeps in their robot program.",
+            "offlineFileName": "Phoenix6-replay-frc2026-latest.json"
+        }
+    ],
+    "javaDependencies": [
+        {
+            "groupId": "com.ctre.phoenix6",
+            "artifactId": "wpiapi-java",
+            "version": "26.3.0"
+        }
+    ],
+    "jniDependencies": [
+        {
+            "groupId": "com.ctre.phoenix6",
+            "artifactId": "api-cpp",
+            "version": "26.3.0",
+            "isJar": false,
+            "skipInvalidPlatforms": true,
+            "validPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "linuxathena"
+            ],
+            "simMode": "hwsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6",
+            "artifactId": "tools",
+            "version": "26.3.0",
+            "isJar": false,
+            "skipInvalidPlatforms": true,
+            "validPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "linuxathena"
+            ],
+            "simMode": "hwsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "api-cpp-sim",
+            "version": "26.3.0",
+            "isJar": false,
+            "skipInvalidPlatforms": true,
+            "validPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "tools-sim",
+            "version": "26.3.0",
+            "isJar": false,
+            "skipInvalidPlatforms": true,
+            "validPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simTalonSRX",
+            "version": "26.3.0",
+            "isJar": false,
+            "skipInvalidPlatforms": true,
+            "validPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simVictorSPX",
+            "version": "26.3.0",
+            "isJar": false,
+            "skipInvalidPlatforms": true,
+            "validPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simPigeonIMU",
+            "version": "26.3.0",
+            "isJar": false,
+            "skipInvalidPlatforms": true,
+            "validPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simProTalonFX",
+            "version": "26.3.0",
+            "isJar": false,
+            "skipInvalidPlatforms": true,
+            "validPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simProTalonFXS",
+            "version": "26.3.0",
+            "isJar": false,
+            "skipInvalidPlatforms": true,
+            "validPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simProCANcoder",
+            "version": "26.3.0",
+            "isJar": false,
+            "skipInvalidPlatforms": true,
+            "validPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simProPigeon2",
+            "version": "26.3.0",
+            "isJar": false,
+            "skipInvalidPlatforms": true,
+            "validPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simProCANrange",
+            "version": "26.3.0",
+            "isJar": false,
+            "skipInvalidPlatforms": true,
+            "validPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simProCANdi",
+            "version": "26.3.0",
+            "isJar": false,
+            "skipInvalidPlatforms": true,
+            "validPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simProCANdle",
+            "version": "26.3.0",
+            "isJar": false,
+            "skipInvalidPlatforms": true,
+            "validPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        }
+    ],
+    "cppDependencies": [
+        {
+            "groupId": "com.ctre.phoenix6",
+            "artifactId": "wpiapi-cpp",
+            "version": "26.3.0",
+            "libName": "CTRE_Phoenix6_WPI",
+            "headerClassifier": "headers",
+            "sharedLibrary": true,
+            "skipInvalidPlatforms": true,
+            "binaryPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "linuxathena"
+            ],
+            "simMode": "hwsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6",
+            "artifactId": "tools",
+            "version": "26.3.0",
+            "libName": "CTRE_PhoenixTools",
+            "headerClassifier": "headers",
+            "sharedLibrary": true,
+            "skipInvalidPlatforms": true,
+            "binaryPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "linuxathena"
+            ],
+            "simMode": "hwsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "wpiapi-cpp-sim",
+            "version": "26.3.0",
+            "libName": "CTRE_Phoenix6_WPISim",
+            "headerClassifier": "headers",
+            "sharedLibrary": true,
+            "skipInvalidPlatforms": true,
+            "binaryPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "tools-sim",
+            "version": "26.3.0",
+            "libName": "CTRE_PhoenixTools_Sim",
+            "headerClassifier": "headers",
+            "sharedLibrary": true,
+            "skipInvalidPlatforms": true,
+            "binaryPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simTalonSRX",
+            "version": "26.3.0",
+            "libName": "CTRE_SimTalonSRX",
+            "headerClassifier": "headers",
+            "sharedLibrary": true,
+            "skipInvalidPlatforms": true,
+            "binaryPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simVictorSPX",
+            "version": "26.3.0",
+            "libName": "CTRE_SimVictorSPX",
+            "headerClassifier": "headers",
+            "sharedLibrary": true,
+            "skipInvalidPlatforms": true,
+            "binaryPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simPigeonIMU",
+            "version": "26.3.0",
+            "libName": "CTRE_SimPigeonIMU",
+            "headerClassifier": "headers",
+            "sharedLibrary": true,
+            "skipInvalidPlatforms": true,
+            "binaryPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simProTalonFX",
+            "version": "26.3.0",
+            "libName": "CTRE_SimProTalonFX",
+            "headerClassifier": "headers",
+            "sharedLibrary": true,
+            "skipInvalidPlatforms": true,
+            "binaryPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simProTalonFXS",
+            "version": "26.3.0",
+            "libName": "CTRE_SimProTalonFXS",
+            "headerClassifier": "headers",
+            "sharedLibrary": true,
+            "skipInvalidPlatforms": true,
+            "binaryPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simProCANcoder",
+            "version": "26.3.0",
+            "libName": "CTRE_SimProCANcoder",
+            "headerClassifier": "headers",
+            "sharedLibrary": true,
+            "skipInvalidPlatforms": true,
+            "binaryPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simProPigeon2",
+            "version": "26.3.0",
+            "libName": "CTRE_SimProPigeon2",
+            "headerClassifier": "headers",
+            "sharedLibrary": true,
+            "skipInvalidPlatforms": true,
+            "binaryPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simProCANrange",
+            "version": "26.3.0",
+            "libName": "CTRE_SimProCANrange",
+            "headerClassifier": "headers",
+            "sharedLibrary": true,
+            "skipInvalidPlatforms": true,
+            "binaryPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simProCANdi",
+            "version": "26.3.0",
+            "libName": "CTRE_SimProCANdi",
+            "headerClassifier": "headers",
+            "sharedLibrary": true,
+            "skipInvalidPlatforms": true,
+            "binaryPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        },
+        {
+            "groupId": "com.ctre.phoenix6.sim",
+            "artifactId": "simProCANdle",
+            "version": "26.3.0",
+            "libName": "CTRE_SimProCANdle",
+            "headerClassifier": "headers",
+            "sharedLibrary": true,
+            "skipInvalidPlatforms": true,
+            "binaryPlatforms": [
+                "windowsx86-64",
+                "linuxx86-64",
+                "linuxarm64",
+                "osxuniversal"
+            ],
+            "simMode": "swsim"
+        }
+    ]
+}
+</file>
+
+<file path="vendordeps/WPILibNewCommands.json">
+{
+  "fileName": "WPILibNewCommands.json",
+  "name": "WPILib-New-Commands",
+  "version": "1.0.0",
+  "uuid": "111e20f7-815e-48f8-9dd6-e675ce75b266",
+  "frcYear": "2026",
+  "mavenUrls": [],
+  "jsonUrl": "",
+  "javaDependencies": [
+    {
+      "groupId": "edu.wpi.first.wpilibNewCommands",
+      "artifactId": "wpilibNewCommands-java",
+      "version": "wpilib"
+    }
+  ],
+  "jniDependencies": [],
+  "cppDependencies": [
+    {
+      "groupId": "edu.wpi.first.wpilibNewCommands",
+      "artifactId": "wpilibNewCommands-cpp",
+      "version": "wpilib",
+      "libName": "wpilibNewCommands",
+      "headerClassifier": "headers",
+      "sourcesClassifier": "sources",
+      "sharedLibrary": true,
+      "skipInvalidPlatforms": true,
+      "binaryPlatforms": [
+        "linuxsystemcore",
+        "linuxathena",
+        "linuxarm32",
+        "linuxarm64",
+        "windowsx86-64",
+        "windowsx86",
+        "linuxx86-64",
+        "osxuniversal"
+      ]
+    }
+  ]
+}
+</file>
+
+<file path=".gitignore">
+# This gitignore has been specially created by the WPILib team.
+# If you remove items from this file, intellisense might break.
+
+### C++ ###
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+### Java ###
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+
+### Linux ###
+*~
+
+# temporary files which can be created if a process still has a handle open of a deleted file
+.fuse_hidden*
+
+# KDE directory preferences
+.directory
+
+# Linux trash folder which might appear on any partition or disk
+.Trash-*
+
+# .nfs files are created when an open file is removed but is still being accessed
+.nfs*
+
+### macOS ###
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+### VisualStudioCode ###
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+### Windows ###
+# Windows thumbnail cache files
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+
+# Dump file
+*.stackdump
+
+# Folder config file
+[Dd]esktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+
+### Gradle ###
+.gradle
+/build/
+
+# Ignore Gradle GUI config
+gradle-app.setting
+
+# Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
+!gradle-wrapper.jar
+
+# Cache of project
+.gradletasknamecache
+
+# # Work around https://youtrack.jetbrains.com/issue/IDEA-116898
+# gradle/wrapper/gradle-wrapper.properties
+
+# # VS Code Specific Java Settings
+# DO NOT REMOVE .classpath and .project
+.classpath
+.project
+.settings/
+bin/
+
+# IntelliJ
+*.iml
+*.ipr
+*.iws
+.idea/
+out/
+
+# Fleet
+.fleet
+
+# Simulation GUI and other tools window save file
+networktables.json
+simgui.json
+*-window.json
+
+# Simulation data log directory
+logs/
+
+# Folder that has CTRE Phoenix Sim device config storage
+ctre_sim/
+
+# clangd
+/.cache
+compile_commands.json
+
+# Eclipse generated file for annotation processors
+.factorypath
+</file>
+
+<file path="build.gradle">
+plugins {
+    id "java"
+    id "edu.wpi.first.GradleRIO" version "2026.2.1"
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+def ROBOT_MAIN_CLASS = "frc.robot.Main"
+
+// Define my targets (RoboRIO) and artifacts (deployable files)
+// This is added by GradleRIO's backing project DeployUtils.
+deploy {
+    targets {
+        roborio(getTargetTypeClass('RoboRIO')) {
+            // Team number is loaded either from the .wpilib/wpilib_preferences.json
+            // or from command line. If not found an exception will be thrown.
+            // You can use getTeamOrDefault(team) instead of getTeamNumber if you
+            // want to store a team number in this file.
+            team = project.frc.getTeamNumber()
+            debug = project.frc.getDebugOrDefault(false)
+
+            artifacts {
+                // First part is artifact name, 2nd is artifact type
+                // getTargetTypeClass is a shortcut to get the class type using a string
+
+                frcJava(getArtifactTypeClass('FRCJavaArtifact')) {
+                }
+
+                // Static files artifact
+                frcStaticFileDeploy(getArtifactTypeClass('FileTreeArtifact')) {
+                    files = project.fileTree('src/main/deploy')
+                    directory = '/home/lvuser/deploy'
+                    deleteOldFiles = false // Change to true to delete files on roboRIO that no
+                                           // longer exist in deploy directory of this project
+                }
+            }
+        }
+    }
+}
+
+def deployArtifact = deploy.targets.roborio.artifacts.frcJava
+
+// Set to true to use debug for all targets including JNI, which will drastically impact
+// performance.
+wpi.java.debugJni = false
+
+// Set this to true to enable desktop support.
+def includeDesktopSupport = true
+
+// Defining my dependencies. In this case, WPILib (+ friends), and vendor libraries.
+// Also defines JUnit 5.
+dependencies {
+    annotationProcessor wpi.java.deps.wpilibAnnotations()
+    implementation wpi.java.deps.wpilib()
+    implementation wpi.java.vendor.java()
+
+    roborioDebug wpi.java.deps.wpilibJniDebug(wpi.platforms.roborio)
+    roborioDebug wpi.java.vendor.jniDebug(wpi.platforms.roborio)
+
+    roborioRelease wpi.java.deps.wpilibJniRelease(wpi.platforms.roborio)
+    roborioRelease wpi.java.vendor.jniRelease(wpi.platforms.roborio)
+
+    nativeDebug wpi.java.deps.wpilibJniDebug(wpi.platforms.desktop)
+    nativeDebug wpi.java.vendor.jniDebug(wpi.platforms.desktop)
+    simulationDebug wpi.sim.enableDebug()
+
+    nativeRelease wpi.java.deps.wpilibJniRelease(wpi.platforms.desktop)
+    nativeRelease wpi.java.vendor.jniRelease(wpi.platforms.desktop)
+    simulationRelease wpi.sim.enableRelease()
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+    systemProperty 'junit.jupiter.extensions.autodetection.enabled', 'true'
+}
+
+// Simulation configuration (e.g. environment variables).
+wpi.sim.addGui().defaultEnabled = true
+wpi.sim.addDriverstation()
+
+// Setting up my Jar File. In this case, adding all libraries into the main jar ('fat jar')
+// in order to make them all available at runtime. Also adding the manifest so WPILib
+// knows where to look for our Robot Class.
+jar {
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    from('src') { into 'backup/src' }
+    from('vendordeps') { into 'backup/vendordeps' }
+    from('build.gradle') { into 'backup' }
+    manifest edu.wpi.first.gradlerio.GradleRIOPlugin.javaManifest(ROBOT_MAIN_CLASS)
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+// Configure jar and deploy tasks
+deployArtifact.jarTask = jar
+wpi.java.configureExecutableTasks(jar)
+wpi.java.configureTestTasks(test)
+
+// Configure string concat to always inline compile
+tasks.withType(JavaCompile) {
+    options.compilerArgs.add '-XDstringConcat=inline'
+}
+</file>
+
+<file path="gradlew">
+#!/bin/sh
+
+#
+# Copyright © 2015-2021 the original authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+##############################################################################
+#
+#   Gradle start up script for POSIX generated by Gradle.
+#
+#   Important for running:
+#
+#   (1) You need a POSIX-compliant shell to run this script. If your /bin/sh is
+#       noncompliant, but you have some other compliant shell such as ksh or
+#       bash, then to run this script, type that shell name before the whole
+#       command line, like:
+#
+#           ksh Gradle
+#
+#       Busybox and similar reduced shells will NOT work, because this script
+#       requires all of these POSIX shell features:
+#         * functions;
+#         * expansions «$var», «${var}», «${var:-default}», «${var+SET}»,
+#           «${var#prefix}», «${var%suffix}», and «$( cmd )»;
+#         * compound commands having a testable exit status, especially «case»;
+#         * various built-in commands including «command», «set», and «ulimit».
+#
+#   Important for patching:
+#
+#   (2) This script targets any POSIX shell, so it avoids extensions provided
+#       by Bash, Ksh, etc; in particular arrays are avoided.
+#
+#       The "traditional" practice of packing multiple parameters into a
+#       space-separated string is a well documented source of bugs and security
+#       problems, so this is (mostly) avoided, by progressively accumulating
+#       options in "$@", and eventually passing that to Java.
+#
+#       Where the inherited environment variables (DEFAULT_JVM_OPTS, JAVA_OPTS,
+#       and GRADLE_OPTS) rely on word-splitting, this is performed explicitly;
+#       see the in-line comments for details.
+#
+#       There are tweaks for specific operating systems such as AIX, CygWin,
+#       Darwin, MinGW, and NonStop.
+#
+#   (3) This script is generated from the Groovy template
+#       https://github.com/gradle/gradle/blob/HEAD/platforms/jvm/plugins-application/src/main/resources/org/gradle/api/internal/plugins/unixStartScript.txt
+#       within the Gradle project.
+#
+#       You can find Gradle at https://github.com/gradle/gradle/.
+#
+##############################################################################
+
+# Attempt to set APP_HOME
+
+# Resolve links: $0 may be a link
+app_path=$0
+
+# Need this for daisy-chained symlinks.
+while
+    APP_HOME=${app_path%"${app_path##*/}"}  # leaves a trailing /; empty if no leading path
+    [ -h "$app_path" ]
+do
+    ls=$( ls -ld "$app_path" )
+    link=${ls#*' -> '}
+    case $link in             #(
+      /*)   app_path=$link ;; #(
+      *)    app_path=$APP_HOME$link ;;
+    esac
+done
+
+# This is normally unused
+# shellcheck disable=SC2034
+APP_BASE_NAME=${0##*/}
+# Discard cd standard output in case $CDPATH is set (https://github.com/gradle/gradle/issues/25036)
+APP_HOME=$( cd -P "${APP_HOME:-./}" > /dev/null && printf '%s
+' "$PWD" ) || exit
+
+# Use the maximum available, or set MAX_FD != -1 to use that value.
+MAX_FD=maximum
+
+warn () {
+    echo "$*"
+} >&2
+
+die () {
+    echo
+    echo "$*"
+    echo
+    exit 1
+} >&2
+
+# OS specific support (must be 'true' or 'false').
+cygwin=false
+msys=false
+darwin=false
+nonstop=false
+case "$( uname )" in                #(
+  CYGWIN* )         cygwin=true  ;; #(
+  Darwin* )         darwin=true  ;; #(
+  MSYS* | MINGW* )  msys=true    ;; #(
+  NONSTOP* )        nonstop=true ;;
+esac
+
+CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+
+
+# Determine the Java command to use to start the JVM.
+if [ -n "$JAVA_HOME" ] ; then
+    if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
+        # IBM's JDK on AIX uses strange locations for the executables
+        JAVACMD=$JAVA_HOME/jre/sh/java
+    else
+        JAVACMD=$JAVA_HOME/bin/java
+    fi
+    if [ ! -x "$JAVACMD" ] ; then
+        die "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME
+
+Please set the JAVA_HOME variable in your environment to match the
+location of your Java installation."
+    fi
+else
+    JAVACMD=java
+    if ! command -v java >/dev/null 2>&1
+    then
+        die "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
+
+Please set the JAVA_HOME variable in your environment to match the
+location of your Java installation."
+    fi
+fi
+
+# Increase the maximum file descriptors if we can.
+if ! "$cygwin" && ! "$darwin" && ! "$nonstop" ; then
+    case $MAX_FD in #(
+      max*)
+        # In POSIX sh, ulimit -H is undefined. That's why the result is checked to see if it worked.
+        # shellcheck disable=SC2039,SC3045
+        MAX_FD=$( ulimit -H -n ) ||
+            warn "Could not query maximum file descriptor limit"
+    esac
+    case $MAX_FD in  #(
+      '' | soft) :;; #(
+      *)
+        # In POSIX sh, ulimit -n is undefined. That's why the result is checked to see if it worked.
+        # shellcheck disable=SC2039,SC3045
+        ulimit -n "$MAX_FD" ||
+            warn "Could not set maximum file descriptor limit to $MAX_FD"
+    esac
+fi
+
+# Collect all arguments for the java command, stacking in reverse order:
+#   * args from the command line
+#   * the main class name
+#   * -classpath
+#   * -D...appname settings
+#   * --module-path (only if needed)
+#   * DEFAULT_JVM_OPTS, JAVA_OPTS, and GRADLE_OPTS environment variables.
+
+# For Cygwin or MSYS, switch paths to Windows format before running java
+if "$cygwin" || "$msys" ; then
+    APP_HOME=$( cygpath --path --mixed "$APP_HOME" )
+    CLASSPATH=$( cygpath --path --mixed "$CLASSPATH" )
+
+    JAVACMD=$( cygpath --unix "$JAVACMD" )
+
+    # Now convert the arguments - kludge to limit ourselves to /bin/sh
+    for arg do
+        if
+            case $arg in                                #(
+              -*)   false ;;                            # don't mess with options #(
+              /?*)  t=${arg#/} t=/${t%%/*}              # looks like a POSIX filepath
+                    [ -e "$t" ] ;;                      #(
+              *)    false ;;
+            esac
+        then
+            arg=$( cygpath --path --ignore --mixed "$arg" )
+        fi
+        # Roll the args list around exactly as many times as the number of
+        # args, so each arg winds up back in the position where it started, but
+        # possibly modified.
+        #
+        # NB: a `for` loop captures its iteration list before it begins, so
+        # changing the positional parameters here affects neither the number of
+        # iterations, nor the values presented in `arg`.
+        shift                   # remove old arg
+        set -- "$@" "$arg"      # push replacement arg
+    done
+fi
+
+
+# Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
+DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
+
+# Collect all arguments for the java command:
+#   * DEFAULT_JVM_OPTS, JAVA_OPTS, JAVA_OPTS, and optsEnvironmentVar are not allowed to contain shell fragments,
+#     and any embedded shellness will be escaped.
+#   * For example: A user cannot expect ${Hostname} to be expanded, as it is an environment variable and will be
+#     treated as '${Hostname}' itself on the command line.
+
+set -- \
+        "-Dorg.gradle.appname=$APP_BASE_NAME" \
+        -classpath "$CLASSPATH" \
+        org.gradle.wrapper.GradleWrapperMain \
+        "$@"
+
+# Stop when "xargs" is not available.
+if ! command -v xargs >/dev/null 2>&1
+then
+    die "xargs is not available"
+fi
+
+# Use "xargs" to parse quoted args.
+#
+# With -n1 it outputs one arg per line, with the quotes and backslashes removed.
+#
+# In Bash we could simply go:
+#
+#   readarray ARGS < <( xargs -n1 <<<"$var" ) &&
+#   set -- "${ARGS[@]}" "$@"
+#
+# but POSIX shell has neither arrays nor command substitution, so instead we
+# post-process each arg (as a line of input to sed) to backslash-escape any
+# character that might be a shell metacharacter, then use eval to reverse
+# that process (while maintaining the separation between arguments), and wrap
+# the whole thing up as a single "set" statement.
+#
+# This will of course break if any of these variables contains a newline or
+# an unmatched quote.
+#
+
+eval "set -- $(
+        printf '%s\n' "$DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS" |
+        xargs -n1 |
+        sed ' s~[^-[:alnum:]+,./:=@_]~\\&~g; ' |
+        tr '\n' ' '
+    )" '"$@"'
+
+exec "$JAVACMD" "$@"
+</file>
+
+<file path="gradlew.bat">
+@rem
+@rem Copyright 2015 the original author or authors.
+@rem
+@rem Licensed under the Apache License, Version 2.0 (the "License");
+@rem you may not use this file except in compliance with the License.
+@rem You may obtain a copy of the License at
+@rem
+@rem      https://www.apache.org/licenses/LICENSE-2.0
+@rem
+@rem Unless required by applicable law or agreed to in writing, software
+@rem distributed under the License is distributed on an "AS IS" BASIS,
+@rem WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+@rem See the License for the specific language governing permissions and
+@rem limitations under the License.
+@rem
+@rem SPDX-License-Identifier: Apache-2.0
+@rem
+
+@if "%DEBUG%"=="" @echo off
+@rem ##########################################################################
+@rem
+@rem  Gradle startup script for Windows
+@rem
+@rem ##########################################################################
+
+@rem Set local scope for the variables with windows NT shell
+if "%OS%"=="Windows_NT" setlocal
+
+set DIRNAME=%~dp0
+if "%DIRNAME%"=="" set DIRNAME=.
+@rem This is normally unused
+set APP_BASE_NAME=%~n0
+set APP_HOME=%DIRNAME%
+
+@rem Resolve any "." and ".." in APP_HOME to make it shorter.
+for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
+
+@rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
+set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
+
+@rem Find java.exe
+if defined JAVA_HOME goto findJavaFromJavaHome
+
+set JAVA_EXE=java.exe
+%JAVA_EXE% -version >NUL 2>&1
+if %ERRORLEVEL% equ 0 goto execute
+
+echo. 1>&2
+echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH. 1>&2
+echo. 1>&2
+echo Please set the JAVA_HOME variable in your environment to match the 1>&2
+echo location of your Java installation. 1>&2
+
+goto fail
+
+:findJavaFromJavaHome
+set JAVA_HOME=%JAVA_HOME:"=%
+set JAVA_EXE=%JAVA_HOME%/bin/java.exe
+
+if exist "%JAVA_EXE%" goto execute
+
+echo. 1>&2
+echo ERROR: JAVA_HOME is set to an invalid directory: %JAVA_HOME% 1>&2
+echo. 1>&2
+echo Please set the JAVA_HOME variable in your environment to match the 1>&2
+echo location of your Java installation. 1>&2
+
+goto fail
+
+:execute
+@rem Setup the command line
+
+set CLASSPATH=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
+
+
+@rem Execute Gradle
+"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %*
+
+:end
+@rem End local scope for the variables with windows NT shell
+if %ERRORLEVEL% equ 0 goto mainEnd
+
+:fail
+rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of
+rem the _cmd.exe /c_ return code!
+set EXIT_CODE=%ERRORLEVEL%
+if %EXIT_CODE% equ 0 set EXIT_CODE=1
+if not ""=="%GRADLE_EXIT_CONSOLE%" exit %EXIT_CODE%
+exit /b %EXIT_CODE%
+
+:mainEnd
+if "%OS%"=="Windows_NT" endlocal
+
+:omega
+</file>
+
+<file path="settings.gradle">
+import org.gradle.internal.os.OperatingSystem
+
+pluginManagement {
+    repositories {
+        mavenLocal()
+        gradlePluginPortal()
+        String frcYear = '2026'
+        File frcHome
+        if (OperatingSystem.current().isWindows()) {
+            String publicFolder = System.getenv('PUBLIC')
+            if (publicFolder == null) {
+                publicFolder = "C:\\Users\\Public"
+            }
+            def homeRoot = new File(publicFolder, "wpilib")
+            frcHome = new File(homeRoot, frcYear)
+        } else {
+            def userFolder = System.getProperty("user.home")
+            def homeRoot = new File(userFolder, "wpilib")
+            frcHome = new File(homeRoot, frcYear)
+        }
+        def frcHomeMaven = new File(frcHome, 'maven')
+        maven {
+            name 'frcHome'
+            url frcHomeMaven
+        }
+    }
+}
+
+Properties props = System.getProperties();
+props.setProperty("org.gradle.internal.native.headers.unresolved.dependencies.ignore", "true");
+</file>
+
+<file path="tuner-project.json">
+{
+  "Version": "1.0.0.0",
+  "LastState": 11,
+  "Modules": [
+    {
+      "ModuleName": "Front Left",
+      "ModuleId": 0,
+      "Encoder": {
+        "Id": 6,
+        "Name": "CANCoder FL",
+        "Model": "CANCoder",
+        "CANbus": "rio",
+        "CANbusFriendly": "",
+        "SelectedMotorType": null
+      },
+      "SteerMotor": {
+        "Id": 5,
+        "Name": "FL Turn",
+        "Model": "Talon FX vers. C",
+        "CANbus": "rio",
+        "CANbusFriendly": "",
+        "SelectedMotorType": {
+          "Name": "WCP Kraken x60",
+          "FreeSpeedRps": 96.7,
+          "SlipCurrentLimit": 120,
+          "StatorCurrentLimit": 60
+        }
+      },
+      "DriveMotor": {
+        "Id": 4,
+        "Name": "FL Drive",
+        "Model": "Talon FX vers. C",
+        "CANbus": "rio",
+        "CANbusFriendly": "",
+        "SelectedMotorType": {
+          "Name": "WCP Kraken x60",
+          "FreeSpeedRps": 96.7,
+          "SlipCurrentLimit": 120,
+          "StatorCurrentLimit": 60
+        }
+      },
+      "IsEncoderInverted": false,
+      "IsSteerInverted": true,
+      "SelectedEncoderType": "CANcoder",
+      "EncoderOffset": 0.2333984375,
+      "DriveMotorSelectionState": 1,
+      "SteerMotorSelectionState": 1,
+      "SteerEncoderSelectionState": 1,
+      "IsModuleValidationComplete": true,
+      "ValidatedSteerId": 5,
+      "ValidatedDriveId": 4,
+      "ValidatedEncoderId": 6
+    },
+    {
+      "ModuleName": "Front Right",
+      "ModuleId": 1,
+      "Encoder": {
+        "Id": 9,
+        "Name": "CANCoder FR",
+        "Model": "CANCoder",
+        "CANbus": "rio",
+        "CANbusFriendly": "",
+        "SelectedMotorType": null
+      },
+      "SteerMotor": {
+        "Id": 2,
+        "Name": "FR Turn",
+        "Model": "Talon FX vers. C",
+        "CANbus": "rio",
+        "CANbusFriendly": "",
+        "SelectedMotorType": {
+          "Name": "WCP Kraken x60",
+          "FreeSpeedRps": 96.7,
+          "SlipCurrentLimit": 120,
+          "StatorCurrentLimit": 60
+        }
+      },
+      "DriveMotor": {
+        "Id": 1,
+        "Name": "FR Drive",
+        "Model": "Talon FX vers. C",
+        "CANbus": "rio",
+        "CANbusFriendly": "",
+        "SelectedMotorType": {
+          "Name": "WCP Kraken x60",
+          "FreeSpeedRps": 96.7,
+          "SlipCurrentLimit": 120,
+          "StatorCurrentLimit": 60
+        }
+      },
+      "IsEncoderInverted": false,
+      "IsSteerInverted": true,
+      "SelectedEncoderType": "CANcoder",
+      "EncoderOffset": -0.06298828125,
+      "DriveMotorSelectionState": 1,
+      "SteerMotorSelectionState": 1,
+      "SteerEncoderSelectionState": 1,
+      "IsModuleValidationComplete": true,
+      "ValidatedSteerId": 2,
+      "ValidatedDriveId": 1,
+      "ValidatedEncoderId": 9
+    },
+    {
+      "ModuleName": "Back Left",
+      "ModuleId": 2,
+      "Encoder": {
+        "Id": 3,
+        "Name": "CANCoder BL",
+        "Model": "CANCoder",
+        "CANbus": "rio",
+        "CANbusFriendly": "",
+        "SelectedMotorType": null
+      },
+      "SteerMotor": {
+        "Id": 8,
+        "Name": "BL Turn",
+        "Model": "Talon FX vers. C",
+        "CANbus": "rio",
+        "CANbusFriendly": "",
+        "SelectedMotorType": {
+          "Name": "WCP Kraken x60",
+          "FreeSpeedRps": 96.7,
+          "SlipCurrentLimit": 120,
+          "StatorCurrentLimit": 60
+        }
+      },
+      "DriveMotor": {
+        "Id": 7,
+        "Name": "BL Drive",
+        "Model": "Talon FX vers. C",
+        "CANbus": "rio",
+        "CANbusFriendly": "",
+        "SelectedMotorType": {
+          "Name": "WCP Kraken x60",
+          "FreeSpeedRps": 96.7,
+          "SlipCurrentLimit": 120,
+          "StatorCurrentLimit": 60
+        }
+      },
+      "IsEncoderInverted": false,
+      "IsSteerInverted": true,
+      "SelectedEncoderType": "CANcoder",
+      "EncoderOffset": -0.416015625,
+      "DriveMotorSelectionState": 1,
+      "SteerMotorSelectionState": 1,
+      "SteerEncoderSelectionState": 1,
+      "IsModuleValidationComplete": true,
+      "ValidatedSteerId": 8,
+      "ValidatedDriveId": 7,
+      "ValidatedEncoderId": 3
+    },
+    {
+      "ModuleName": "Back Right",
+      "ModuleId": 3,
+      "Encoder": {
+        "Id": 12,
+        "Name": "CANCoder BR",
+        "Model": "CANCoder",
+        "CANbus": "rio",
+        "CANbusFriendly": "",
+        "SelectedMotorType": null
+      },
+      "SteerMotor": {
+        "Id": 11,
+        "Name": "BR Turn",
+        "Model": "Talon FX vers. C",
+        "CANbus": "rio",
+        "CANbusFriendly": "",
+        "SelectedMotorType": {
+          "Name": "WCP Kraken x60",
+          "FreeSpeedRps": 96.7,
+          "SlipCurrentLimit": 120,
+          "StatorCurrentLimit": 60
+        }
+      },
+      "DriveMotor": {
+        "Id": 10,
+        "Name": "BR Drive",
+        "Model": "Talon FX vers. C",
+        "CANbus": "rio",
+        "CANbusFriendly": "",
+        "SelectedMotorType": {
+          "Name": "WCP Kraken x60",
+          "FreeSpeedRps": 96.7,
+          "SlipCurrentLimit": 120,
+          "StatorCurrentLimit": 60
+        }
+      },
+      "IsEncoderInverted": false,
+      "IsSteerInverted": true,
+      "SelectedEncoderType": "CANcoder",
+      "EncoderOffset": 0.3046875,
+      "DriveMotorSelectionState": 1,
+      "SteerMotorSelectionState": 1,
+      "SteerEncoderSelectionState": 1,
+      "IsModuleValidationComplete": true,
+      "ValidatedSteerId": 11,
+      "ValidatedDriveId": 10,
+      "ValidatedEncoderId": 12
+    }
+  ],
+  "SwerveOptions": {
+    "Gyro": {
+      "Id": 15,
+      "Name": "Pigeon 2 vers. S (Device ID 15)",
+      "Model": "Pigeon 2 vers. S",
+      "CANbus": "rio",
+      "CANbusFriendly": "",
+      "SelectedMotorType": null
+    },
+    "IsValidGyroCANbus": true,
+    "VerticalTrackSizeInches": 22.0,
+    "HorizontalTrackSizeInches": 22.0,
+    "WheelRadiusInches": 2.0,
+    "IsLeftSideInverted": false,
+    "IsRightSideInverted": true,
+    "SwerveModuleType": 4,
+    "SwerveModuleConfiguration": {
+      "ModuleBrand": 4,
+      "DriveRatio": 6.746031746031747,
+      "SteerRatio": 21.428571428571427,
+      "CouplingRatio": 3.5714285714285716,
+      "CustomName": "L2"
+    },
+    "HasVerifiedSteer": true,
+    "SelectedModuleManufacturer": "Swerve Drive Specialties (SDS)",
+    "HasVerifiedDrive": true,
+    "IsValidConfiguration": true
+  },
+  "TeamNumber": 12100,
+  "schema_version": "1"
+}
+</file>
+
+<file path="WPILib-License.md">
+Copyright (c) 2009-2026 FIRST and other WPILib contributors
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+   * Redistributions of source code must retain the above copyright
+     notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above copyright
+     notice, this list of conditions and the following disclaimer in the
+     documentation and/or other materials provided with the distribution.
+   * Neither the name of FIRST, WPILib, nor the names of other WPILib
+     contributors may be used to endorse or promote products derived from
+     this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY FIRST AND OTHER WPILIB CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY NONINFRINGEMENT AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL FIRST OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+</file>
+
+<file path="src/main/java/frc/robot/generated/TunerConstants.java">
+package frc.robot.generated;
+
+import static edu.wpi.first.units.Units.*;
+
+import com.ctre.phoenix6.CANBus;
+import com.ctre.phoenix6.configs.*;
+import com.ctre.phoenix6.hardware.*;
+import com.ctre.phoenix6.signals.*;
+import com.ctre.phoenix6.swerve.*;
+import com.ctre.phoenix6.swerve.SwerveModuleConstants.*;
+
+import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.numbers.N1;
+import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.units.measure.*;
+
+import frc.robot.subsystems.CommandSwerveDrivetrain;
+
+// Generated by the 2026 Tuner X Swerve Project Generator
+// https://v6.docs.ctr-electronics.com/en/stable/docs/tuner/tuner-swerve/index.html
+public class TunerConstants {
+    // Both sets of gains need to be tuned to your individual robot.
+
+    // The steer motor uses any SwerveModule.SteerRequestType control request with the
+    // output type specified by SwerveModuleConstants.SteerMotorClosedLoopOutput
+    private static final Slot0Configs steerGains = new Slot0Configs()
+        .withKP(100).withKI(0).withKD(0.5)
+        .withKS(0.1).withKV(2.66).withKA(0)
+        .withStaticFeedforwardSign(StaticFeedforwardSignValue.UseClosedLoopSign);
+    // When using closed-loop control, the drive motor uses the control
+    // output type specified by SwerveModuleConstants.DriveMotorClosedLoopOutput
+    private static final Slot0Configs driveGains = new Slot0Configs()
+        .withKP(0.1).withKI(0).withKD(0)
+        .withKS(0).withKV(0.124);
+
+    // The closed-loop output type to use for the steer motors;
+    // This affects the PID/FF gains for the steer motors
+    private static final ClosedLoopOutputType kSteerClosedLoopOutput = ClosedLoopOutputType.Voltage;
+    // The closed-loop output type to use for the drive motors;
+    // This affects the PID/FF gains for the drive motors
+    private static final ClosedLoopOutputType kDriveClosedLoopOutput = ClosedLoopOutputType.Voltage;
+
+    // The type of motor used for the drive motor
+    private static final DriveMotorArrangement kDriveMotorType = DriveMotorArrangement.TalonFX_Integrated;
+    // The type of motor used for the steer motor
+    private static final SteerMotorArrangement kSteerMotorType = SteerMotorArrangement.TalonFX_Integrated;
+
+    // The remote sensor feedback type to use for the steer motors;
+    // When not Pro-licensed, Fused*/Sync* automatically fall back to Remote*
+    private static final SteerFeedbackType kSteerFeedbackType = SteerFeedbackType.FusedCANcoder;
+
+    // The stator current at which the wheels start to slip;
+    // This needs to be tuned to your individual robot
+    private static final Current kSlipCurrent = Amps.of(120);
+
+    // Initial configs for the drive and steer motors and the azimuth encoder; these cannot be null.
+    // Some configs will be overwritten; check the `with*InitialConfigs()` API documentation.
+    private static final TalonFXConfiguration driveInitialConfigs = new TalonFXConfiguration()
+        .withCurrentLimits(
+            new CurrentLimitsConfigs()
+                // Default supply current limit is 70 A, but it can be lowered to avoid brownouts.
+                // Supply current limits can be larger than the breaker current rating.
+                .withSupplyCurrentLimit(Amps.of(70))
+                .withSupplyCurrentLimitEnable(true)
+        );
+    private static final TalonFXConfiguration steerInitialConfigs = new TalonFXConfiguration()
+        .withCurrentLimits(
+            new CurrentLimitsConfigs()
+                // Swerve azimuth does not require much torque output, so we can set a relatively low
+                // stator current limit to help avoid brownouts without impacting performance.
+                .withStatorCurrentLimit(Amps.of(60))
+                .withStatorCurrentLimitEnable(true)
+        );
+    private static final CANcoderConfiguration encoderInitialConfigs = new CANcoderConfiguration();
+    // Configs for the Pigeon 2; leave this null to skip applying Pigeon 2 configs
+    private static final Pigeon2Configuration pigeonConfigs = null;
+
+    // CAN bus that the devices are located on;
+    // All swerve devices must share the same CAN bus
+    public static final CANBus kCANBus = new CANBus("", "./logs/example.hoot");
+
+    // Measured robot speed (m/s) at 12 V applied output;
+    // This is NOT the desired max robot speed - see MaxSpeed in RobotContainer instead;
+    // This needs to be tuned to your individual robot
+    public static final LinearVelocity kSpeedAt12Volts = MetersPerSecond.of(4.58);
+
+    // Every 1 rotation of the azimuth results in kCoupleRatio drive motor turns;
+    // This may need to be tuned to your individual robot
+    private static final double kCoupleRatio = 3.5714285714285716;
+
+    private static final double kDriveGearRatio = 6.746031746031747;
+    private static final double kSteerGearRatio = 21.428571428571427;
+    private static final Distance kWheelRadius = Inches.of(2);
+
+    private static final boolean kInvertLeftSide = false;
+    private static final boolean kInvertRightSide = true;
+
+    private static final int kPigeonId = 15;
+
+    // These are only used for simulation
+    private static final MomentOfInertia kSteerInertia = KilogramSquareMeters.of(0.01);
+    private static final MomentOfInertia kDriveInertia = KilogramSquareMeters.of(0.035);
+    // Simulated voltage necessary to overcome friction
+    private static final Voltage kSteerFrictionVoltage = Volts.of(0.2);
+    private static final Voltage kDriveFrictionVoltage = Volts.of(0.2);
+
+    public static final SwerveDrivetrainConstants DrivetrainConstants = new SwerveDrivetrainConstants()
+            .withCANBusName(kCANBus.getName())
+            .withPigeon2Id(kPigeonId)
+            .withPigeon2Configs(pigeonConfigs);
+
+    private static final SwerveModuleConstantsFactory<TalonFXConfiguration, TalonFXConfiguration, CANcoderConfiguration> ConstantCreator =
+        new SwerveModuleConstantsFactory<TalonFXConfiguration, TalonFXConfiguration, CANcoderConfiguration>()
+            .withDriveMotorGearRatio(kDriveGearRatio)
+            .withSteerMotorGearRatio(kSteerGearRatio)
+            .withCouplingGearRatio(kCoupleRatio)
+            .withWheelRadius(kWheelRadius)
+            .withSteerMotorGains(steerGains)
+            .withDriveMotorGains(driveGains)
+            .withSteerMotorClosedLoopOutput(kSteerClosedLoopOutput)
+            .withDriveMotorClosedLoopOutput(kDriveClosedLoopOutput)
+            .withSlipCurrent(kSlipCurrent)
+            .withSpeedAt12Volts(kSpeedAt12Volts)
+            .withDriveMotorType(kDriveMotorType)
+            .withSteerMotorType(kSteerMotorType)
+            .withFeedbackSource(kSteerFeedbackType)
+            .withDriveMotorInitialConfigs(driveInitialConfigs)
+            .withSteerMotorInitialConfigs(steerInitialConfigs)
+            .withEncoderInitialConfigs(encoderInitialConfigs)
+            .withSteerInertia(kSteerInertia)
+            .withDriveInertia(kDriveInertia)
+            .withSteerFrictionVoltage(kSteerFrictionVoltage)
+            .withDriveFrictionVoltage(kDriveFrictionVoltage);
+
+
+    // Front Left
+    private static final int kFrontLeftDriveMotorId = 4;
+    private static final int kFrontLeftSteerMotorId = 5;
+    private static final int kFrontLeftEncoderId = 6;
+    private static final Angle kFrontLeftEncoderOffset = Rotations.of(0.27294921875);
+    private static final boolean kFrontLeftSteerMotorInverted = true;
+    private static final boolean kFrontLeftEncoderInverted = false;
+
+    private static final Distance kFrontLeftXPos = Inches.of(11);
+    private static final Distance kFrontLeftYPos = Inches.of(11);
+
+    // Front Right
+    private static final int kFrontRightDriveMotorId = 1;
+    private static final int kFrontRightSteerMotorId = 2;
+    private static final int kFrontRightEncoderId = 9;
+    private static final Angle kFrontRightEncoderOffset = Rotations.of(0.05029296875);
+    private static final boolean kFrontRightSteerMotorInverted = true;
+    private static final boolean kFrontRightEncoderInverted = false;
+
+    private static final Distance kFrontRightXPos = Inches.of(11);
+    private static final Distance kFrontRightYPos = Inches.of(-11);
+
+    // Back Left
+    private static final int kBackLeftDriveMotorId = 7;
+    private static final int kBackLeftSteerMotorId = 8;
+    private static final int kBackLeftEncoderId = 3;
+    private static final Angle kBackLeftEncoderOffset = Rotations.of(-0.0849609375);
+    private static final boolean kBackLeftSteerMotorInverted = true;
+    private static final boolean kBackLeftEncoderInverted = false;
+
+    private static final Distance kBackLeftXPos = Inches.of(-11);
+    private static final Distance kBackLeftYPos = Inches.of(11);
+
+    // Back Right
+    private static final int kBackRightDriveMotorId = 10;
+    private static final int kBackRightSteerMotorId = 11;
+    private static final int kBackRightEncoderId = 12;
+    private static final Angle kBackRightEncoderOffset = Rotations.of(0.309326171875);
+    private static final boolean kBackRightSteerMotorInverted = true;
+    private static final boolean kBackRightEncoderInverted = false;
+
+    private static final Distance kBackRightXPos = Inches.of(-11);
+    private static final Distance kBackRightYPos = Inches.of(-11);
+
+
+    public static final SwerveModuleConstants<TalonFXConfiguration, TalonFXConfiguration, CANcoderConfiguration> FrontLeft =
+        ConstantCreator.createModuleConstants(
+            kFrontLeftSteerMotorId, kFrontLeftDriveMotorId, kFrontLeftEncoderId, kFrontLeftEncoderOffset,
+            kFrontLeftXPos, kFrontLeftYPos, kInvertLeftSide, kFrontLeftSteerMotorInverted, kFrontLeftEncoderInverted
+        );
+    public static final SwerveModuleConstants<TalonFXConfiguration, TalonFXConfiguration, CANcoderConfiguration> FrontRight =
+        ConstantCreator.createModuleConstants(
+            kFrontRightSteerMotorId, kFrontRightDriveMotorId, kFrontRightEncoderId, kFrontRightEncoderOffset,
+            kFrontRightXPos, kFrontRightYPos, kInvertRightSide, kFrontRightSteerMotorInverted, kFrontRightEncoderInverted
+        );
+    public static final SwerveModuleConstants<TalonFXConfiguration, TalonFXConfiguration, CANcoderConfiguration> BackLeft =
+        ConstantCreator.createModuleConstants(
+            kBackLeftSteerMotorId, kBackLeftDriveMotorId, kBackLeftEncoderId, kBackLeftEncoderOffset,
+            kBackLeftXPos, kBackLeftYPos, kInvertLeftSide, kBackLeftSteerMotorInverted, kBackLeftEncoderInverted
+        );
+    public static final SwerveModuleConstants<TalonFXConfiguration, TalonFXConfiguration, CANcoderConfiguration> BackRight =
+        ConstantCreator.createModuleConstants(
+            kBackRightSteerMotorId, kBackRightDriveMotorId, kBackRightEncoderId, kBackRightEncoderOffset,
+            kBackRightXPos, kBackRightYPos, kInvertRightSide, kBackRightSteerMotorInverted, kBackRightEncoderInverted
+        );
+
+    /**
+     * Creates a CommandSwerveDrivetrain instance.
+     * This should only be called once in your robot program.
+     */
+    public static CommandSwerveDrivetrain createDrivetrain() {
+        return new CommandSwerveDrivetrain(
+            DrivetrainConstants, FrontLeft, FrontRight, BackLeft, BackRight
+        );
+    }
+
+
+    /**
+     * Swerve Drive class utilizing CTR Electronics' Phoenix 6 API with the selected device types.
+     */
+    public static class TunerSwerveDrivetrain extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder> {
+        /**
+         * Constructs a CTRE SwerveDrivetrain using the specified constants.
+         * <p>
+         * This constructs the underlying hardware devices, so users should not construct
+         * the devices themselves. If they need the devices, they can access them through
+         * getters in the classes.
+         *
+         * @param drivetrainConstants   Drivetrain-wide constants for the swerve drive
+         * @param modules               Constants for each specific module
+         */
+        public TunerSwerveDrivetrain(
+            SwerveDrivetrainConstants drivetrainConstants,
+            SwerveModuleConstants<?, ?, ?>... modules
+        ) {
+            super(
+                TalonFX::new, TalonFX::new, CANcoder::new,
+                drivetrainConstants, modules
+            );
+        }
+
+        /**
+         * Constructs a CTRE SwerveDrivetrain using the specified constants.
+         * <p>
+         * This constructs the underlying hardware devices, so users should not construct
+         * the devices themselves. If they need the devices, they can access them through
+         * getters in the classes.
+         *
+         * @param drivetrainConstants     Drivetrain-wide constants for the swerve drive
+         * @param odometryUpdateFrequency The frequency to run the odometry loop. If
+         *                                unspecified or set to 0 Hz, this is 250 Hz on
+         *                                CAN FD, and 100 Hz on CAN 2.0.
+         * @param modules                 Constants for each specific module
+         */
+        public TunerSwerveDrivetrain(
+            SwerveDrivetrainConstants drivetrainConstants,
+            double odometryUpdateFrequency,
+            SwerveModuleConstants<?, ?, ?>... modules
+        ) {
+            super(
+                TalonFX::new, TalonFX::new, CANcoder::new,
+                drivetrainConstants, odometryUpdateFrequency, modules
+            );
+        }
+
+        /**
+         * Constructs a CTRE SwerveDrivetrain using the specified constants.
+         * <p>
+         * This constructs the underlying hardware devices, so users should not construct
+         * the devices themselves. If they need the devices, they can access them through
+         * getters in the classes.
+         *
+         * @param drivetrainConstants       Drivetrain-wide constants for the swerve drive
+         * @param odometryUpdateFrequency   The frequency to run the odometry loop. If
+         *                                  unspecified or set to 0 Hz, this is 250 Hz on
+         *                                  CAN FD, and 100 Hz on CAN 2.0.
+         * @param odometryStandardDeviation The standard deviation for odometry calculation
+         *                                  in the form [x, y, theta]ᵀ, with units in meters
+         *                                  and radians
+         * @param visionStandardDeviation   The standard deviation for vision calculation
+         *                                  in the form [x, y, theta]ᵀ, with units in meters
+         *                                  and radians
+         * @param modules                   Constants for each specific module
+         */
+        public TunerSwerveDrivetrain(
+            SwerveDrivetrainConstants drivetrainConstants,
+            double odometryUpdateFrequency,
+            Matrix<N3, N1> odometryStandardDeviation,
+            Matrix<N3, N1> visionStandardDeviation,
+            SwerveModuleConstants<?, ?, ?>... modules
+        ) {
+            super(
+                TalonFX::new, TalonFX::new, CANcoder::new,
+                drivetrainConstants, odometryUpdateFrequency,
+                odometryStandardDeviation, visionStandardDeviation, modules
+            );
+        }
+    }
+}
+</file>
+
+</files>

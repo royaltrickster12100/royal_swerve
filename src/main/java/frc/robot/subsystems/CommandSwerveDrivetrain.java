@@ -24,6 +24,8 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
+import frc.robot.Constants.VisionConstants;
+import frc.robot.LimelightHelpers;
 import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
 
 /**
@@ -84,28 +86,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
     /*
      * SysId routine for characterizing rotation.
-     * This is used to find PID gains for the FieldCentricFacingAngle HeadingController.
-     * See the documentation of SwerveRequest.SysIdSwerveRotation for info on importing the log to SysId.
-     */
-    private final SysIdRoutine m_sysIdRoutineRotation = new SysIdRoutine(
-        new SysIdRoutine.Config(
-            /* This is in radians per second², but SysId only supports "volts per second" */
-            Volts.of(Math.PI / 6).per(Second),
-            /* This is in radians per second, but SysId only supports "volts" */
-            Volts.of(Math.PI),
-            null, // Use default timeout (10 s)
-            // Log state with SignalLogger class
-            state -> SignalLogger.writeString("SysIdRotation_State", state.toString())
-        ),
-        new SysIdRoutine.Mechanism(
-            output -> {
-                /* output is actually radians per second, but SysId only supports "volts" */
-                setControl(m_rotationCharacterization.withRotationalRate(output.in(Volts)));
-                /* also log the requested output for SysId */
-                SignalLogger.writeDouble("Rotational_Rate", output.in(Volts));
-            },
-            null,
-            this
+     * This is used to find PID gains for the FieldCentricFacingAngle Heading...[source](https://www.chiefdelphi.com/t/tuner-x-swerve-code-rotation-sysid-routine-questions/483845)is
         )
     );
 
@@ -114,13 +95,9 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
     /**
      * Constructs a CTRE SwerveDrivetrain using the specified constants.
-     * <p>
-     * This constructs the underlying hardware devices, so users should not construct
-     * the devices themselves. If they need the devices, they can access them through
-     * getters in the classes.
      *
-     * @param drivetrainConstants   Drivetrain-wide constants for the swerve drive
-     * @param modules               Constants for each specific module
+     * @param drivetrainConstants Drivetrain-wide constants for the swerve drive
+     * @param modules             Constants for each specific module
      */
     public CommandSwerveDrivetrain(
         SwerveDrivetrainConstants drivetrainConstants,
@@ -130,19 +107,14 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         if (Utils.isSimulation()) {
             startSimThread();
         }
+        configureLimelight();
     }
 
     /**
      * Constructs a CTRE SwerveDrivetrain using the specified constants.
-     * <p>
-     * This constructs the underlying hardware devices, so users should not construct
-     * the devices themselves. If they need the devices, they can access them through
-     * getters in the classes.
      *
      * @param drivetrainConstants     Drivetrain-wide constants for the swerve drive
-     * @param odometryUpdateFrequency The frequency to run the odometry loop. If
-     *                                unspecified or set to 0 Hz, this is 250 Hz on
-     *                                CAN FD, and 100 Hz on CAN 2.0.
+     * @param odometryUpdateFrequency The frequency to run the odometry loop.
      * @param modules                 Constants for each specific module
      */
     public CommandSwerveDrivetrain(
@@ -154,25 +126,16 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         if (Utils.isSimulation()) {
             startSimThread();
         }
+        configureLimelight();
     }
 
     /**
      * Constructs a CTRE SwerveDrivetrain using the specified constants.
-     * <p>
-     * This constructs the underlying hardware devices, so users should not construct
-     * the devices themselves. If they need the devices, they can access them through
-     * getters in the classes.
      *
      * @param drivetrainConstants       Drivetrain-wide constants for the swerve drive
-     * @param odometryUpdateFrequency   The frequency to run the odometry loop. If
-     *                                  unspecified or set to 0 Hz, this is 250 Hz on
-     *                                  CAN FD, and 100 Hz on CAN 2.0.
-     * @param odometryStandardDeviation The standard deviation for odometry calculation
-     *                                  in the form [x, y, theta]ᵀ, with units in meters
-     *                                  and radians
-     * @param visionStandardDeviation   The standard deviation for vision calculation
-     *                                  in the form [x, y, theta]ᵀ, with units in meters
-     *                                  and radians
+     * @param odometryUpdateFrequency   The frequency to run the odometry loop.
+     * @param odometryStandardDeviation Standard deviations for odometry calculation
+     * @param visionStandardDeviation   Standard deviations for vision calculation
      * @param modules                   Constants for each specific module
      */
     public CommandSwerveDrivetrain(
@@ -186,6 +149,22 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         if (Utils.isSimulation()) {
             startSimThread();
         }
+        configureLimelight();
+    }
+
+    /**
+     * Configura a pose da Limelight em relação ao centro do robô.
+     */
+    private void configureLimelight() {
+        LimelightHelpers.setCameraPose_RobotSpace(
+            VisionConstants.kLimelightName,
+            VisionConstants.kForwardMeters,
+            VisionConstants.kSideMeters,
+            VisionConstants.kUpMeters,
+            VisionConstants.kRollDegrees,
+            VisionConstants.kPitchDegrees,
+            VisionConstants.kYawDegrees
+        );
     }
 
     /**
@@ -220,14 +199,17 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         return m_sysIdRoutineToApply.dynamic(direction);
     }
 
+    /**
+     * Retorna a posição (Pose2d) estimada atual do robô.
+     */
+    public Pose2d getPose() {
+        return this.getState().Pose;
+    }
+
     @Override
     public void periodic() {
         /*
          * Periodically try to apply the operator perspective.
-         * If we haven't applied the operator perspective before, then we should apply it regardless of DS state.
-         * This allows us to correct the perspective in case the robot code restarts mid-match.
-         * Otherwise, only check and apply the operator perspective if the DS is disabled.
-         * This ensures driving behavior doesn't change until an explicit disable event occurs during testing.
          */
         if (!m_hasAppliedOperatorPerspective || DriverStation.isDisabled()) {
             DriverStation.getAlliance().ifPresent(allianceColor -> {
@@ -238,6 +220,38 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
                 );
                 m_hasAppliedOperatorPerspective = true;
             });
+        }
+
+        /*
+         * Processa e funde as medições de visão da Limelight 4 via MegaTag 2
+         */
+        updateVisionMegaTag2();
+    }
+
+    private void updateVisionMegaTag2() {
+        double yawDegrees = this.getPigeon2().getYaw().getValueAsDouble();
+        double angularVelocityRps = this.getPigeon2().getAngularVelocityZWorld().getValueAsDouble();
+
+        // Alimenta o algoritmo MegaTag 2 com os dados de orientação e velocidade do Pigeon 2
+        LimelightHelpers.SetRobotOrientation(
+            VisionConstants.kLimelightName,
+            yawDegrees,
+            angularVelocityRps,
+            0, 0, 0, 0
+        );
+
+        // Obtém a estimativa de posição no mapa de campo (WPILib Blue Alliance)
+        LimelightHelpers.PoseEstimate visionEstimate = 
+            LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(VisionConstants.kLimelightName);
+
+        // Validação de segurança: aceita medições apenas se houver AprilTags visíveis e o robô não estiver girando muito rápido
+        if (visionEstimate != null && visionEstimate.tagCount > 0) {
+            if (Math.abs(angularVelocityRps) < 360.0) { // Descarte se a velocidade angular for maior que 360°/s
+                this.addVisionMeasurement(
+                    visionEstimate.pose,
+                    visionEstimate.timestampSeconds
+                );
+            }
         }
     }
 
@@ -257,8 +271,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     }
 
     /**
-     * Adds a vision measurement to the Kalman Filter. This will correct the odometry pose estimate
-     * while still accounting for measurement noise.
+     * Adds a vision measurement to the Kalman Filter.
      *
      * @param visionRobotPoseMeters The pose of the robot as measured by the vision camera.
      * @param timestampSeconds The timestamp of the vision measurement in seconds.
@@ -269,17 +282,11 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     }
 
     /**
-     * Adds a vision measurement to the Kalman Filter. This will correct the odometry pose estimate
-     * while still accounting for measurement noise.
-     * <p>
-     * Note that the vision measurement standard deviations passed into this method
-     * will continue to apply to future measurements until a subsequent call to
-     * {@link #setVisionMeasurementStdDevs(Matrix)} or this method.
+     * Adds a vision measurement to the Kalman Filter.
      *
      * @param visionRobotPoseMeters The pose of the robot as measured by the vision camera.
      * @param timestampSeconds The timestamp of the vision measurement in seconds.
      * @param visionMeasurementStdDevs Standard deviations of the vision pose measurement
-     *     in the form [x, y, theta]ᵀ, with units in meters and radians.
      */
     @Override
     public void addVisionMeasurement(
