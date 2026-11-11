@@ -1,6 +1,6 @@
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.Volts;
 
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -20,13 +20,19 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
-
 import frc.robot.Constants.VisionConstants;
 import frc.robot.LimelightHelpers;
 import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
+
+
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.config.PIDConstants;
+import com.pathplanner.lib.config.RobotConfig;
+import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
 /**
  * Class that extends the Phoenix 6 SwerveDrivetrain class and implements
@@ -51,6 +57,8 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     private final SwerveRequest.SysIdSwerveTranslation m_translationCharacterization = new SwerveRequest.SysIdSwerveTranslation();
     private final SwerveRequest.SysIdSwerveSteerGains m_steerCharacterization = new SwerveRequest.SysIdSwerveSteerGains();
     private final SwerveRequest.SysIdSwerveRotation m_rotationCharacterization = new SwerveRequest.SysIdSwerveRotation();
+
+    private final SwerveRequest.ApplyRobotSpeeds autoDrive = new SwerveRequest.ApplyRobotSpeeds();
 
     /* SysId routine for characterizing translation. This is used to find PID gains for the drive motors. */
     private final SysIdRoutine m_sysIdRoutineTranslation = new SysIdRoutine(
@@ -177,6 +185,37 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         return run(() -> this.setControl(request.get()));
     }
 
+
+    private void configureAutoBuilder() {
+    try {
+        RobotConfig config = RobotConfig.fromGUISettings();
+        AutoBuilder.configure(
+            () -> getState().Pose,
+            this::resetPose,
+            () -> getState().Speeds,
+            (speeds, feedforwards) -> setControl(
+                autoDrive.withSpeeds(speeds)
+                    .withWheelForceFeedforwardsX(feedforwards.robotRelativeForcesXNewtons())
+                    .withWheelForceFeedforwardsY(feedforwards.robotRelativeForcesYNewtons())
+            ),
+            new PPHolonomicDriveController(
+                new PIDConstants(10, 0, 0),
+                new PIDConstants(7, 0, 0)
+            ),
+            config,
+            () -> DriverStation.getAlliance()
+                    .map(a -> a == Alliance.Red)
+                    .orElse(false),
+            this
+        );
+    } catch (Exception e) {
+        DriverStation.reportError("Failed to load PathPlanner config", e.getStackTrace());
+    }
+    }
+
+
+
+
     /**
      * Runs the SysId Quasistatic test in the given direction for the routine
      * specified by {@link #m_sysIdRoutineToApply}.
@@ -222,10 +261,17 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             });
         }
 
+
+
         /*
          * Processa e funde as medições de visão da Limelight 4 via MegaTag 2
          */
         updateVisionMegaTag2();
+
+        Pose2d currentPose = getState().Pose;
+        SmartDashboard.putNumber("Robot X", currentPose.getX());
+        SmartDashboard.putNumber("Robot Y", currentPose.getY());
+        SmartDashboard.putNumber("Robot Heading", currentPose.getRotation().getDegrees());
     }
 
     private void updateVisionMegaTag2() {
