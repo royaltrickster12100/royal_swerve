@@ -8,6 +8,7 @@ import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
+import com.pathplanner.lib.commands.PathPlannerAuto;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -68,7 +69,6 @@ public class RobotContainer {
     }
 
     private void configureBindings() {
-        // Comando de movimentação padrão (Piloto)
         drivetrain.setDefaultCommand(
             drivetrain.applyRequest(() -> {
                 double x = MathUtil.applyDeadband(-joystick.getLeftY(), 0.1) * MaxSpeed;
@@ -91,17 +91,14 @@ public class RobotContainer {
             return point.withModuleDirection(new Rotation2d(x, y));
         }));
 
-        // ALINHAMENTO AUTOMÁTICO DE MIRA (Limelight 4 - Gatilho Direito do Piloto)
         joystick.rightBumper().whileTrue(
             drivetrain.applyRequest(() -> {
                 boolean hasTarget = LimelightHelpers.getTV(VisionConstants.kLimelightName);
                 double tx = LimelightHelpers.getTX(VisionConstants.kLimelightName);
 
-                // Publica dados de diagnóstico no SmartDashboard
                 SmartDashboard.putBoolean("Limelight/HasTarget", hasTarget);
                 SmartDashboard.putNumber("Limelight/TX", tx);
 
-                // Mantém a pilotagem de translação na alavanca esquerda
                 double x = MathUtil.applyDeadband(-joystick.getLeftY(), 0.1) * MaxSpeed;
                 double y = MathUtil.applyDeadband(-joystick.getLeftX(), 0.1) * MaxSpeed;
 
@@ -131,9 +128,7 @@ public class RobotContainer {
 
         drivetrain.registerTelemetry(logger::telemeterize);
 
-        // ------------------------------------------------------------------------
         // CONTROLES DO OPERADOR (Anexos)
-        // ------------------------------------------------------------------------
         if (!RobotModeConstants.IS_ATTACHMENTS_MOUNTED && !RobotBase.isSimulation()) {
             return;
         }
@@ -159,16 +154,8 @@ public class RobotContainer {
     }
 
     public Command getAutonomousCommand() {
-        final var idle = new SwerveRequest.Idle();
-        return Commands.sequence(
-            drivetrain.runOnce(() -> drivetrain.seedFieldCentric(Rotation2d.kZero)),
-            drivetrain.applyRequest(() ->
-                drive.withVelocityX(0.5)
-                    .withVelocityY(0)
-                    .withRotationalRate(0)
-            )
-            .withTimeout(5.0),
-            drivetrain.applyRequest(() -> idle)
-        );
+        return new PathPlannerAuto("teste 12-11");
+        .beforeStarting(() -> System.out.println("=== AUTO INICIOU ==="))
+        .finallyDo(() -> System.out.println("=== AUTO TERMINOU ==="));
     }
 }

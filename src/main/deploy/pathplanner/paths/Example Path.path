@@ -8,24 +8,24 @@
       },
       "prevControl": null,
       "nextControl": {
-        "x": 3.0,
-        "y": 7.0
+        "x": 2.6416833095577745,
+        "y": 7.030299572039943
       },
       "isLocked": false,
       "linkedName": null
     },
     {
       "anchor": {
-        "x": 4.0,
-        "y": 6.0
+        "x": 2.680499286733238,
+        "y": 7.0
       },
       "prevControl": {
-        "x": 3.0,
-        "y": 6.0
+        "x": 2.430688453484041,
+        "y": 7.009723558573996
       },
       "nextControl": null,
       "isLocked": false,
-      "linkedName": null
+      "linkedName": "teste1"
     }
   ],
   "rotationTargets": [],

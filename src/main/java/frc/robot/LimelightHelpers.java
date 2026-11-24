@@ -698,7 +698,7 @@ public class LimelightHelpers {
 
         public RawDetection(int classId, double txnc, double tync, double ta, 
             double corner0_X, double corner0_Y, 
-            double corner1_X, double corner1_Y, 
+            double corner1_X, double corner1_Y,
             double corner2_X, double corner2_Y, 
             double corner3_X, double corner3_Y ) {
             this.classId = classId;
